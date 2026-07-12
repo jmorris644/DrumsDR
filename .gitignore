@@ -1,2 +1,12 @@
 # Secrets — Firebase admin keys, service accounts, etc.
 secrets/
+
+# Firebase local state
+.firebase/
+
+# Editor / tooling
+.claude/
+
+# Temp folders created while clearing git locks — safe to delete
+_gitjunk/
+_to_delete/
