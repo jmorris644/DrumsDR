@@ -23,13 +23,19 @@
   h1{font-size:22px;margin:0;letter-spacing:.2px}
   .sub{color:var(--dim);font-size:13px}
   .layout{display:grid;grid-template-columns:270px 1fr;gap:16px;margin-top:14px}
+  .layout>*{min-width:0}   /* let the scroll container shrink instead of widening the page */
   @media(max-width:820px){.layout{grid-template-columns:1fr}}
-  /* landscape phones: reclaim vertical space, keep the ribbon usable */
+  /* landscape phones: put the practice board first and reclaim vertical space
+     so the scrolling ribbon is the focus */
   @media(max-height:600px) and (orientation:landscape){
-    .wrap{padding:10px 12px 118px}
+    .wrap{padding:8px 12px 96px}
     header{margin-bottom:0}
-    .tinner{padding:8px 12px;gap:10px}
-    .layout{margin-top:8px}
+    h1{font-size:18px}
+    header .sub{display:none}
+    .tinner{padding:6px 12px;gap:10px}
+    .layout{margin-top:8px;gap:10px}
+    .layout>.panel{order:-1}          /* board above the drills list */
+    .boardhead .desc,#hintbar{display:none}
   }
   .panel{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:14px}
   .panel h2{font-size:12px;text-transform:uppercase;letter-spacing:1px;color:var(--dim);margin:0 0 10px}
@@ -68,7 +74,7 @@
 
   /* horizontal scrolling ribbon (landscape / Scroll view) */
   .rows.scrollview{flex-direction:row;flex-wrap:nowrap;overflow-x:auto;overflow-y:hidden;
-    gap:16px;padding:6px 50% 12px;scroll-behavior:smooth;scrollbar-width:thin;position:relative}
+    gap:16px;padding:6px 16px 14px;scrollbar-width:thin;max-width:100%}
   .rows.scrollview .prow{display:flex;flex-direction:column;align-items:flex-start;gap:6px;
     flex:0 0 auto;width:max-content}
   .rows.scrollview .prow .num{text-align:left;width:auto}
@@ -468,10 +474,16 @@ function animate(){
   }
   requestAnimationFrame(animate);
 }
+const PLAYHEAD=0.30;     // keep the active figure ~30% from the left (read ahead to the right)
+function scrollRibbon(el,smooth){
+  const c=document.getElementById("rows");
+  const cr=c.getBoundingClientRect(), er=el.getBoundingClientRect();
+  const target=c.scrollLeft + (er.left-cr.left) - c.clientWidth*PLAYHEAD;
+  c.scrollTo({left:target, behavior: smooth?"smooth":"auto"});   // browser clamps at both ends
+}
 function centerRow(el){
-  el.scrollIntoView(scrollView
-    ? {inline:"center",block:"nearest",behavior:"smooth"}
-    : {block:"center",behavior:"smooth"});
+  if(scrollView) scrollRibbon(el,true);
+  else el.scrollIntoView({block:"center",behavior:"smooth"});
 }
 function lightStep(r,s){
   const rowChanged = (r !== litRow);
@@ -483,8 +495,8 @@ function lightStep(r,s){
   if(cell){ cell.classList.add("lit"); litCell=cell; }
   litRow=r;
   if(scrollView){
-    // ribbon view: glide the active figure under centre, moving left → right
-    (cell||R.pr).scrollIntoView({inline:"center",block:"nearest",behavior:"smooth"});
+    // ribbon view: keep the active figure at the playhead, upcoming figures to the right
+    scrollRibbon(cell||R.pr,true);
   } else if(mode==="all" && rowChanged){
     // play-through: keep the active line off the transport bar
     R.pr.scrollIntoView({block:"center",behavior:"smooth"});
@@ -622,7 +634,8 @@ window.addEventListener("resize",fitTransport);
 /* ---------- Boot ---------- */
 renderSheetList();
 renderSheet();
-applyAutoView();          // start in the ribbon if we launched in phone-landscape
+if(location.hash.replace("#","")==="scroll"){ userSetView=true; setScrollView(true); }  // deep-link to ribbon
+else applyAutoView();     // otherwise start in the ribbon only if launched in phone-landscape
 fitTransport();
 requestAnimationFrame(animate);
 </script>
