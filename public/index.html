@@ -24,6 +24,13 @@
   .sub{color:var(--dim);font-size:13px}
   .layout{display:grid;grid-template-columns:270px 1fr;gap:16px;margin-top:14px}
   @media(max-width:820px){.layout{grid-template-columns:1fr}}
+  /* landscape phones: reclaim vertical space, keep the ribbon usable */
+  @media(max-height:600px) and (orientation:landscape){
+    .wrap{padding:10px 12px 118px}
+    header{margin-bottom:0}
+    .tinner{padding:8px 12px;gap:10px}
+    .layout{margin-top:8px}
+  }
   .panel{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:14px}
   .panel h2{font-size:12px;text-transform:uppercase;letter-spacing:1px;color:var(--dim);margin:0 0 10px}
 
@@ -45,14 +52,27 @@
   /* pattern board */
   .boardhead{display:flex;justify-content:space-between;align-items:flex-end;gap:12px;margin-bottom:4px;flex-wrap:wrap}
   .boardhead .desc{color:var(--dim);font-size:13px;max-width:640px;line-height:1.45}
+  .headctl{display:flex;align-items:center;gap:12px;flex-wrap:wrap;justify-content:flex-end}
+  .ctlgrp{display:flex;align-items:center;gap:6px}
+  .ctllbl{font-size:11px;text-transform:uppercase;letter-spacing:.6px;color:var(--dim)}
   .rows{margin-top:12px;display:flex;flex-direction:column;gap:7px}
-  .prow{display:grid;grid-template-columns:34px 1fr;align-items:center;gap:12px;
+  .prow{display:grid;grid-template-columns:54px 1fr;align-items:center;gap:12px;
     background:var(--panel2);border:1px solid var(--line);border-radius:10px;padding:7px 10px;cursor:pointer;transition:.12s}
   .prow:hover{border-color:#3a4658}
   .prow.sel{border-color:var(--accent);background:#20283a}
   .prow.playing{border-color:var(--glow);box-shadow:0 0 14px -2px var(--glow)}
   .prow .num{color:var(--dim);font-variant-numeric:tabular-nums;font-size:13px;text-align:right}
   .cells{display:flex;gap:10px;flex-wrap:wrap}
+  /* barline between figures in a multi-bar phrase */
+  .cellgap{align-self:stretch;width:0;flex:0 0 auto;border-left:2px dashed #3a4658;margin:0 6px}
+
+  /* horizontal scrolling ribbon (landscape / Scroll view) */
+  .rows.scrollview{flex-direction:row;flex-wrap:nowrap;overflow-x:auto;overflow-y:hidden;
+    gap:16px;padding:6px 50% 12px;scroll-behavior:smooth;scrollbar-width:thin;position:relative}
+  .rows.scrollview .prow{display:flex;flex-direction:column;align-items:flex-start;gap:6px;
+    flex:0 0 auto;width:max-content}
+  .rows.scrollview .prow .num{text-align:left;width:auto}
+  .rows.scrollview .cells{flex-wrap:nowrap}
   .cell{display:flex;align-items:center;justify-content:center;width:34px;height:34px;border-radius:8px;
     transition:transform .05s linear, filter .05s linear; position:relative}
   .cell svg{width:26px;height:26px;display:block;filter:drop-shadow(0 1px 1px rgba(0,0,0,.4))}
@@ -63,17 +83,17 @@
   /* transport */
   .transport{position:fixed;left:0;right:0;bottom:0;background:rgba(16,20,27,.92);
     backdrop-filter:blur(10px);border-top:1px solid var(--line);z-index:20}
-  .tinner{max-width:1180px;margin:0 auto;padding:12px 18px;display:flex;align-items:center;gap:18px;flex-wrap:wrap}
-  button.ctl{background:var(--panel2);border:1px solid var(--line);color:var(--ink);border-radius:10px;
-    padding:9px 14px;font-size:14px;cursor:pointer;transition:.12s;display:inline-flex;align-items:center;gap:8px}
+  .tinner{max-width:1180px;margin:0 auto;padding:7px 16px;display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+  button.ctl{background:var(--panel2);border:1px solid var(--line);color:var(--ink);border-radius:9px;
+    padding:6px 11px;font-size:13px;cursor:pointer;transition:.12s;display:inline-flex;align-items:center;gap:7px}
   button.ctl:hover{border-color:#55647d}
-  button.play{background:var(--accent);color:#12161d;border-color:var(--accent);font-weight:700;min-width:104px;justify-content:center}
+  button.play{background:var(--accent);color:#12161d;border-color:var(--accent);font-weight:700;min-width:88px;justify-content:center}
   button.play.on{background:#e5484d;border-color:#e5484d;color:#fff}
-  .grp{display:flex;align-items:center;gap:9px}
+  .grp{display:flex;align-items:center;gap:8px}
   .grp label{font-size:12px;color:var(--dim);white-space:nowrap}
   input[type=range]{accent-color:var(--accent);cursor:pointer}
-  .bpmbox{display:flex;align-items:center;gap:10px}
-  .bpmval{font-variant-numeric:tabular-nums;font-weight:700;font-size:20px;min-width:46px;text-align:right}
+  .bpmbox{display:flex;align-items:center;gap:8px}
+  .bpmval{font-variant-numeric:tabular-nums;font-weight:700;font-size:16px;min-width:38px;text-align:right}
   .bpmunit{font-size:11px;color:var(--dim)}
   select,.seg{background:var(--panel2);border:1px solid var(--line);color:var(--ink);border-radius:9px;padding:7px 9px;font-size:13px}
   .seg{display:inline-flex;padding:3px;gap:3px}
@@ -115,11 +135,33 @@
           <div style="font-size:18px;font-weight:700" id="sheetName">—</div>
           <div class="desc" id="sheetDesc"></div>
         </div>
-        <div style="text-align:right">
+        <div class="headctl">
+          <div class="ctlgrp" id="phraseWrap" style="display:none">
+            <span class="ctllbl">Phrase</span>
+            <div class="seg" id="phraseSeg">
+              <button data-bars="1">1 bar</button>
+              <button data-bars="2" class="on">2 bars</button>
+              <button data-bars="4">4 bars</button>
+            </div>
+          </div>
+          <div class="ctlgrp" id="subdivWrap" style="display:none">
+            <span class="ctllbl">Note</span>
+            <div class="seg" id="subdivSeg">
+              <button data-npb="2" class="on">8th</button>
+              <button data-npb="4">16th</button>
+            </div>
+          </div>
+          <div class="ctlgrp">
+            <span class="ctllbl">View</span>
+            <div class="seg" id="viewSeg">
+              <button data-view="list" class="on">List</button>
+              <button data-view="scroll">Scroll</button>
+            </div>
+          </div>
           <div class="badge" id="rowCount"></div>
         </div>
       </div>
-      <div class="hintbar">Tip: click any line to loop just that one. Each line is one beat — the hits inside it are evenly spaced.</div>
+      <div class="hintbar" id="hintbar">Tip: click any line to loop just that one. Each group of four shapes is one bar (figure); the barline gap separates them. Rotate a phone to landscape (or pick Scroll) for the moving ribbon view.</div>
       <div class="rows" id="rows"></div>
     </div>
   </div>
@@ -304,9 +346,57 @@ function click(t,accent){
   o.connect(g); g.connect(out); o.start(t); o.stop(t+0.05);
 }
 
+/* ---------- Phrase generation ----------
+   The two-symbol drills are generated at runtime so we can present them either
+   as single figures (16) or as every two-bar phrase pairing (256).            */
+const GEN = {                         // sheetKey -> the two symbols it alternates
+  "rightleftsnare1.1": {a:"LHs", b:"RHs"},
+  "LHLF1.1":           {a:"LHs", b:"LFk"},
+  "RHLF1.1":           {a:"RHs", b:"LFk"},
+  "LHRF1.1":           {a:"LHs", b:"RFk"},
+  "RHRF1.1":           {a:"RHs", b:"RFk"},
+  "RLkick":            {a:"LFk", b:"RFk"},
+};
+// The 16 orderings of two symbols over four 16ths, in a teaching order
+// (unison → one different → two/two → alternating). 0 = a, 1 = b.
+const PAT16 = [
+  [0,0,0,0],[1,1,1,1],[0,0,0,1],[1,1,1,0],[0,0,1,1],[1,1,0,0],[0,1,1,1],[1,0,0,0],
+  [0,1,1,0],[1,0,0,1],[0,1,0,0],[1,0,1,1],[0,0,1,0],[1,1,0,1],[0,1,0,1],[1,0,1,0],
+];
+let phraseBars = 2;                   // 1 = single figures, 2 = two-bar, 4 = four-bar
+let notesPerBeat = 2;                  // 2 = 8ths (default, wider slow range), 4 = 16ths
+let scrollView = false;               // horizontal ribbon (landscape)
+
+function figuresFor(gen){ return PAT16.map(p => p.map(bit => bit ? gen.b : gen.a)); }
+// Turn an ordered pair of figures (i,j) into a phrase of the current length.
+function phraseFor(figs, i, j){
+  const a=figs[i], b=figs[j];
+  if(phraseBars === 2) return a.concat(b);
+  return a.concat(b, b, a);                         // 4 bars: arch form i,j,j,i
+}
+function buildRows(key){
+  const gen = GEN[key];
+  if(!gen) return DATA.sheets[key];                 // linear drills: use static data
+  const figs = figuresFor(gen);
+  if(phraseBars === 1) return figs.map(f => f.slice());
+  const out = [];                                   // every ordered pair of figures
+  for(let i=0;i<figs.length;i++)
+    for(let j=0;j<figs.length;j++) out.push(phraseFor(figs,i,j));
+  return out;
+}
+function rowLabel(key, ri){
+  if(!GEN[key] || phraseBars === 1) return (ri+1)+".";
+  const n = PAT16.length;                           // "i,j" — matches the drummer's notation
+  return (Math.floor(ri/n)+1)+","+(ri%n+1);
+}
+function rowCountFor(key){
+  if(!GEN[key]) return DATA.sheets[key].length;
+  return phraseBars === 1 ? PAT16.length : PAT16.length*PAT16.length;
+}
+
 /* ---------- State ---------- */
 let sheetKey=DATA.order[0];
-let rows=DATA.sheets[sheetKey];
+let rows=buildRows(sheetKey);
 let selRow=0;
 let mode="row";
 let bpm=70;
@@ -322,20 +412,26 @@ let rowEls=[];
 
 /* ---------- Render board ---------- */
 function renderSheet(){
-  rows=DATA.sheets[sheetKey];
+  rows=buildRows(sheetKey);
   const m=DATA.meta[sheetKey];
+  const gen=!!GEN[sheetKey];
   document.getElementById("sheetName").textContent=m.name;
   document.getElementById("sheetDesc").textContent=m.desc;
-  document.getElementById("rowCount").textContent=rows.length+" lines";
+  document.getElementById("rowCount").textContent=rows.length+(gen&&phraseBars>1?" phrases":" lines");
+  document.getElementById("phraseWrap").style.display=gen?"flex":"none";
+  document.getElementById("subdivWrap").style.display=gen?"flex":"none";
   const host=document.getElementById("rows"); host.innerHTML=""; rowEls=[];
   rows.forEach((row,ri)=>{
     const pr=document.createElement("div"); pr.className="prow"+(ri===selRow?" sel":"");
-    const num=document.createElement("div"); num.className="num"; num.textContent=(ri+1)+".";
+    const num=document.createElement("div"); num.className="num"; num.textContent=rowLabel(sheetKey,ri);
     const cells=document.createElement("div"); cells.className="cells";
     const cs=[];
-    row.forEach(tok=>{ const c=cellNode(tok); cells.appendChild(c); cs.push(c); });
+    row.forEach((tok,idx)=>{
+      if(idx>0 && idx%4===0){ const g=document.createElement("div"); g.className="cellgap"; cells.appendChild(g); }
+      const c=cellNode(tok); cells.appendChild(c); cs.push(c);
+    });
     pr.appendChild(num); pr.appendChild(cells);
-    pr.addEventListener("click",()=>{ selRow=ri; if(mode==="all"){ } markSel(); if(playing){ curRow=ri; curStep=0; } });
+    pr.addEventListener("click",()=>{ selRow=ri; markSel(); centerRow(pr); if(playing){ curRow=ri; curStep=0; } });
     host.appendChild(pr);
     rowEls.push({pr,cells:cs});
   });
@@ -348,7 +444,8 @@ function renderSheetList(){
   DATA.order.forEach(k=>{
     const m=DATA.meta[k];
     const b=document.createElement("button"); b.className="sheet"+(k===sheetKey?" active":"");
-    b.innerHTML=`<div class="nm">${m.name}</div><div class="tg">${m.tag} · ${DATA.sheets[k].length} lines</div>`;
+    const cnt=rowCountFor(k); const unit=(GEN[k]&&phraseBars>1)?"phrases":"lines";
+    b.innerHTML=`<div class="nm">${m.name}</div><div class="tg">${m.tag} · ${cnt} ${unit}</div>`;
     b.addEventListener("click",()=>{ sheetKey=k; selRow=0; curRow=0; curStep=0;
       document.querySelectorAll(".sheet").forEach(x=>x.classList.remove("active")); b.classList.add("active");
       renderSheet(); });
@@ -371,16 +468,27 @@ function animate(){
   }
   requestAnimationFrame(animate);
 }
+function centerRow(el){
+  el.scrollIntoView(scrollView
+    ? {inline:"center",block:"nearest",behavior:"smooth"}
+    : {block:"center",behavior:"smooth"});
+}
 function lightStep(r,s){
   const rowChanged = (r !== litRow);
   if(litCell){ litCell.classList.remove("lit"); }
   if(litRow!==null && litRow!==r && rowEls[litRow]) rowEls[litRow].pr.classList.remove("playing");
   const R=rowEls[r]; if(!R) return;
   R.pr.classList.add("playing");
-  if(R.cells[s]){ R.cells[s].classList.add("lit"); litCell=R.cells[s]; }
+  const cell=R.cells[s];
+  if(cell){ cell.classList.add("lit"); litCell=cell; }
   litRow=r;
-  // during play-through, keep the active line centered so it never hides behind the transport bar
-  if(mode==="all" && rowChanged) R.pr.scrollIntoView({block:"center",behavior:"smooth"});
+  if(scrollView){
+    // ribbon view: glide the active figure under centre, moving left → right
+    (cell||R.pr).scrollIntoView({inline:"center",block:"nearest",behavior:"smooth"});
+  } else if(mode==="all" && rowChanged){
+    // play-through: keep the active line off the transport bar
+    R.pr.scrollIntoView({block:"center",behavior:"smooth"});
+  }
 }
 function clearLit(){
   if(litCell) litCell.classList.remove("lit");
@@ -394,10 +502,12 @@ function flashBeat(on){ bd.classList.toggle("on",!!on); if(on) setTimeout(()=>bd
 function currentRows(){ return mode==="row" ? [selRow] : rows.map((_,i)=>i); }
 function scheduleStep(){
   const beatDur=60/bpm;
-  const rowArr = mode==="row" ? [selRow] : null;
   const row = rows[curRow];
   const steps = row.length;
-  const stepDur = beatDur/steps;
+  // generated drills space hits by the chosen note value (16ths = 4/beat,
+  // 8ths = 2/beat = half speed); linear drills keep "whole line = one beat".
+  const perBeat = GEN[sheetKey] ? notesPerBeat : steps;
+  const stepDur = beatDur/perBeat;
 
   // count-in first
   if(countdown>0){
@@ -406,19 +516,21 @@ function scheduleStep(){
     countdown--; nextTime+=beatDur;
     return;
   }
-  // metronome on the downbeat of each line (each line = one beat)
-  if(curStep===0 && document.getElementById("metro").checked){
+  const beatStart = (curStep % perBeat)===0;
+  // metronome on the downbeat of each beat (each figure)
+  if(beatStart && document.getElementById("metro").checked){
     click(nextTime, beatCount%4===0);
   }
   // the hit
   const tok=row[curStep]; const limb=tok.slice(0,2); const voice=VOICE[tok.slice(2)]||"snare";
   voiceHit(voice,nextTime,LIMB[limb].pan);
-  visQ.push({row:curRow,step:curStep,t:nextTime, beat: curStep===0?1:undefined});
+  visQ.push({row:curRow,step:curStep,t:nextTime, beat: beatStart?1:undefined});
 
   // advance
   curStep++; nextTime+=stepDur;
+  if((curStep % perBeat)===0) beatCount++;   // count each beat/figure
   if(curStep>=steps){
-    curStep=0; beatCount++;
+    curStep=0;
     if(mode==="all"){
       curRow++;
       if(curRow>=rows.length){ curRow=0; }
@@ -458,15 +570,60 @@ document.getElementById("modeSeg").addEventListener("click",e=>{
   document.querySelectorAll("#modeSeg button").forEach(x=>x.classList.toggle("on",x===b));
   if(playing){ curRow= mode==="row"?selRow:0; curStep=0; }
 });
+document.getElementById("phraseSeg").addEventListener("click",e=>{
+  const b=e.target.closest("button"); if(!b) return;
+  phraseBars=+b.dataset.bars;
+  document.querySelectorAll("#phraseSeg button").forEach(x=>x.classList.toggle("on",x===b));
+  selRow=0; curRow=0; curStep=0;
+  renderSheet(); renderSheetList();
+});
+document.getElementById("subdivSeg").addEventListener("click",e=>{
+  const b=e.target.closest("button"); if(!b) return;
+  notesPerBeat=+b.dataset.npb;
+  document.querySelectorAll("#subdivSeg button").forEach(x=>x.classList.toggle("on",x===b));
+  if(playing) curStep=0;   // realign to a beat so the click stays in phase
+});
+
+/* ---------- List / Scroll (landscape ribbon) ---------- */
+let userSetView=false;   // true once the user picks a view manually
+function setScrollView(v){
+  scrollView=v;
+  document.getElementById("rows").classList.toggle("scrollview",v);
+  document.querySelectorAll("#viewSeg button").forEach(b=>b.classList.toggle("on",(b.dataset.view==="scroll")===v));
+  if(rowEls[selRow]) centerRow(rowEls[selRow].pr);
+}
+document.getElementById("viewSeg").addEventListener("click",e=>{
+  const b=e.target.closest("button"); if(!b) return;
+  userSetView=true; setScrollView(b.dataset.view==="scroll");
+});
+// auto-switch to the ribbon on a landscape phone, unless the user chose manually
+const mqPhoneLandscape=window.matchMedia("(orientation:landscape) and (max-height:600px)");
+function applyAutoView(){ if(!userSetView) setScrollView(mqPhoneLandscape.matches); }
+mqPhoneLandscape.addEventListener("change",applyAutoView);
+
 document.addEventListener("keydown",e=>{
   if(e.code==="Space"){ e.preventDefault(); playing?pause():start(); }
-  if(e.code==="ArrowDown"){ e.preventDefault(); selRow=Math.min(rows.length-1,selRow+1); markSel(); rowEls[selRow].pr.scrollIntoView({block:"center",behavior:"smooth"}); }
-  if(e.code==="ArrowUp"){ e.preventDefault(); selRow=Math.max(0,selRow-1); markSel(); rowEls[selRow].pr.scrollIntoView({block:"center",behavior:"smooth"}); }
+  const prev=(e.code==="ArrowUp"||e.code==="ArrowLeft"), next=(e.code==="ArrowDown"||e.code==="ArrowRight");
+  if(prev||next){
+    e.preventDefault();
+    selRow=next?Math.min(rows.length-1,selRow+1):Math.max(0,selRow-1);
+    markSel(); centerRow(rowEls[selRow].pr);
+    if(playing){ curRow=selRow; curStep=0; }
+  }
 });
+
+/* ---------- Fit page to the (variable-height) transport ---------- */
+function fitTransport(){
+  const t=document.querySelector(".transport"), w=document.querySelector(".wrap");
+  if(t&&w) w.style.paddingBottom=(t.offsetHeight+16)+"px";
+}
+window.addEventListener("resize",fitTransport);
 
 /* ---------- Boot ---------- */
 renderSheetList();
 renderSheet();
+applyAutoView();          // start in the ribbon if we launched in phone-landscape
+fitTransport();
 requestAnimationFrame(animate);
 </script>
 </body>
