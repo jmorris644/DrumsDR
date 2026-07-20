@@ -525,8 +525,30 @@ function animate(){
       if(cur.row!==-1) lightStep(cur.row,cur.step);
       if(cur.beat!==undefined) flashBeat(cur.beat);
     }
+    if(playing && scrollView) ribbonFollow(now);   // continuous, tempo-accurate scroll
   }
   requestAnimationFrame(animate);
+}
+// x-position (ribbon content coords) of a hit's cell centre
+function cellContentX(row,step){
+  const R=rowElByIndex.get(row); if(!R) return null;
+  const el=R.cells[step]||R.pr;
+  const host=document.getElementById("rows");
+  const er=el.getBoundingClientRect(), cr=host.getBoundingClientRect();
+  return host.scrollLeft + (er.left-cr.left) + er.width/2;
+}
+// Slide the ribbon so the playhead tracks the music between hits — synced to the
+// audio clock, so it stays correct at ANY bpm (not a fixed-duration animation).
+function ribbonFollow(now){
+  const cur=visQ[0]; if(!cur || cur.row===-1) return;
+  let x=cellContentX(cur.row,cur.step); if(x==null) return;
+  const nxt=visQ[1];
+  if(nxt && nxt.row!==-1 && nxt.t>cur.t){
+    const x2=cellContentX(nxt.row,nxt.step);
+    if(x2!=null){ const f=Math.min(1,Math.max(0,(now-cur.t)/(nxt.t-cur.t))); x+=(x2-x)*f; }
+  }
+  const host=document.getElementById("rows");
+  host.scrollLeft = x - host.clientWidth*PLAYHEAD;
 }
 function lightStep(r,s){
   const rowChanged=(r!==litRow);
@@ -539,8 +561,8 @@ function lightStep(r,s){
   if(!R){ litCell=null; return; }
   R.pr.classList.add("playing");
   const cell=R.cells[s]; litCell=cell||null; if(cell) cell.classList.add("lit");
-  if(scrollView) scrollToRow(r);
-  else if(mode==="all" && rowChanged) R.pr.scrollIntoView({block:"center",behavior:"smooth"});
+  // ribbon scroll is driven continuously by ribbonFollow(); list play-through centers the line
+  if(!scrollView && mode==="all" && rowChanged) R.pr.scrollIntoView({block:"center",behavior:"smooth"});
 }
 function clearLit(){
   if(litCell) litCell.classList.remove("lit");
@@ -648,8 +670,9 @@ document.getElementById("viewSeg").addEventListener("click",e=>{
   userSetView=true; setScrollView(b.dataset.view==="scroll");
 });
 // manual swipe/scroll in the ribbon: keep the mounted window around what's on screen
+// (during playback the animation loop drives the window, so skip it here)
 document.getElementById("rows").addEventListener("scroll",()=>{
-  if(!scrollView || scrollRAF) return;
+  if(!scrollView || playing || scrollRAF) return;
   scrollRAF=true;
   requestAnimationFrame(()=>{ scrollRAF=false;
     const host=document.getElementById("rows");
@@ -687,10 +710,23 @@ renderSheet();
 const bootHash=location.hash.replace("#","");
 if(bootHash==="scroll"){ userSetView=true; setScrollView(true); }        // deep-link to ribbon
 else if(bootHash==="selftest"){ runSelfTest(); }                         // headless virtualization check
+else if(bootHash==="scrolltest"){ runScrollTest(); }                     // headless tempo-scroll check
 else applyAutoView();     // otherwise start in the ribbon only if launched in phone-landscape
 fitTransport();
 requestAnimationFrame(animate);
 
+// Drive ribbonFollow at a fixed elapsed time for a slow vs. fast tempo: at the same
+// wall-clock moment the faster tempo must have scrolled further (proves it's not fixed-rate).
+function runScrollTest(){
+  userSetView=true; setScrollView(true);
+  const host=document.getElementById("rows"), R=5;
+  ensureMounted(R); litRow=R; litStep=0;
+  function posAt(span,now){ visQ=[{row:R,step:0,t:0},{row:R+1,step:0,t:span}]; ribbonFollow(now); return Math.round(host.scrollLeft); }
+  const start=posAt(1.0,0.0), slow=posAt(1.0,0.5), fast=posAt(0.2,0.5);
+  const h=document.getElementById("hintbar"); h.style.display="block";
+  h.textContent="SCROLLTEST start="+start+" slow@0.5s="+slow+" fast@0.5s="+fast+
+    " → "+(fast>=slow&&slow>=start?"PASS (faster scrolls further)":"FAIL");
+}
 // Simulate lighting rows across the sheet and report the max DOM rows kept mounted.
 function runSelfTest(){
   userSetView=true; setScrollView(true);
