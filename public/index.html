@@ -72,18 +72,26 @@
   /* barline between figures in a multi-bar phrase */
   .cellgap{align-self:stretch;width:0;flex:0 0 auto;border-left:2px dashed #3a4658;margin:0 6px}
 
-  /* horizontal scrolling ribbon (landscape / Scroll view) */
-  .rows.scrollview{flex-direction:row;flex-wrap:nowrap;overflow-x:auto;overflow-y:hidden;
-    gap:16px;padding:6px 16px 14px;scrollbar-width:thin;max-width:100%}
-  .rows.scrollview .prow{display:flex;flex-direction:column;align-items:flex-start;gap:6px;
-    flex:0 0 auto;width:max-content}
+  /* horizontal scrolling ribbon (landscape / Scroll view) — virtualized */
+  .rows.scrollview{overflow-x:auto;overflow-y:hidden;padding:6px 0 10px;scrollbar-width:thin;max-width:100%}
+  .rows.virt{position:relative;display:block}          /* rows are absolutely placed */
+  .rows.virt .prow{position:absolute;margin:0}
+  .vspacer{pointer-events:none}                        /* sizes the scroll extent */
+  .rows.scrollview .prow{display:flex;flex-direction:column;align-items:flex-start;gap:6px;width:max-content}
   .rows.scrollview .prow .num{text-align:left;width:auto}
   .rows.scrollview .cells{flex-wrap:nowrap}
-  .cell{display:flex;align-items:center;justify-content:center;width:34px;height:34px;border-radius:8px;
-    transition:transform .05s linear, filter .05s linear; position:relative}
-  .cell svg{width:26px;height:26px;display:block;filter:drop-shadow(0 1px 1px rgba(0,0,0,.4))}
-  .cell.lit{transform:scale(1.28)}
-  .cell.lit svg{filter:drop-shadow(0 0 9px var(--glow)) drop-shadow(0 0 3px var(--glow))}
+  .cell{display:flex;align-items:center;justify-content:center;width:34px;height:34px;flex:0 0 auto;
+    transition:transform .05s linear; position:relative}
+  .cell i{width:26px;height:26px;display:block;background:var(--c);box-shadow:0 1px 1px rgba(0,0,0,.4)}
+  .cell.v-snare i{border-radius:50%}
+  .cell.v-kick  i{border-radius:5px}
+  .cell.v-tom   i{background:transparent;border:4px solid var(--c);box-shadow:none}
+  .cell.v-hat   i{width:22px;height:22px;border-radius:3px;transform:rotate(45deg)}
+  .cell.v-ride  i{width:22px;height:22px;border-radius:3px;transform:rotate(45deg);background:transparent;border:3px solid var(--c);box-shadow:none}
+  .cell.v-crash i{width:0;height:0;background:transparent;box-shadow:none;
+    border-left:14px solid transparent;border-right:14px solid transparent;border-bottom:24px solid var(--c)}
+  .cell.lit{transform:scale(1.3)}
+  .cell.lit i{filter:drop-shadow(0 0 8px var(--glow)) drop-shadow(0 0 3px var(--glow))}
   .cell.lit::after{content:"";position:absolute;inset:-6px;border-radius:12px;background:radial-gradient(circle,rgba(255,211,77,.35),transparent 70%)}
 
   /* transport */
@@ -234,8 +242,9 @@ function shapeSVG(voice,color){
 }
 function cellNode(token){
   const limb=token.slice(0,2), voice=VOICE[token.slice(2)]||"snare";
-  const el=document.createElement("div"); el.className="cell";
-  el.innerHTML=`<svg viewBox="0 0 32 32">${shapeSVG(voice,LIMB[limb].color)}</svg>`;
+  const el=document.createElement("div"); el.className="cell v-"+voice;
+  el.style.setProperty("--c", LIMB[limb].color);
+  el.appendChild(document.createElement("i"));   // lightweight CSS shape (no SVG)
   return el;
 }
 
@@ -414,36 +423,81 @@ let countdown=0;               // remaining count-in clicks
 let timer=null;
 const AHEAD=0.1, TICK=25;
 let visQ=[];                    // {row,step,t}
-let rowEls=[];
+let rowElByIndex=new Map();     // trueRowIndex -> {pr,cells}  (windowed in Scroll view)
+let stride=0;                   // px per phrase along the ribbon (incl. gap)
+let vspacer=null;               // sizes the ribbon's scroll extent
+let scrollRAF=false;
+const SCROLL_GAP=16, WIN_BACK=6, WIN_FWD=18;   // mount window: [center-6, center+18)
 
-/* ---------- Render board ---------- */
+/* ---------- Render board ----------
+   List view renders every row in flow. Scroll view is VIRTUALIZED: a spacer
+   sizes the scroll extent and only a small window of phrases is ever in the DOM
+   (so 256 four-bar phrases never build a 100k-px strip that crashes phones).  */
+const PLAYHEAD=0.30;    // active figure sits ~30% from the left of the ribbon
+function makeRow(i){
+  const row=rows[i];
+  const pr=document.createElement("div"); pr.className="prow"+(i===selRow?" sel":"");
+  const num=document.createElement("div"); num.className="num"; num.textContent=rowLabel(sheetKey,i);
+  const cells=document.createElement("div"); cells.className="cells"; const cs=[];
+  row.forEach((tok,idx)=>{
+    if(idx>0 && idx%4===0){ const g=document.createElement("div"); g.className="cellgap"; cells.appendChild(g); }
+    const c=cellNode(tok); cells.appendChild(c); cs.push(c);
+  });
+  pr.appendChild(num); pr.appendChild(cells);
+  pr.addEventListener("click",()=>{ selRow=i; markSel();
+    if(scrollView){ ensureMounted(i); scrollToRow(i); } else centerRow(pr);
+    if(playing){ curRow=i; curStep=0; } });
+  if(scrollView){ pr.style.left=(i*stride)+"px"; pr.style.top="0"; }   // absolutely placed
+  return {pr,cells:cs};
+}
 function renderSheet(){
   rows=buildRows(sheetKey);
-  const m=DATA.meta[sheetKey];
-  const gen=!!GEN[sheetKey];
+  const m=DATA.meta[sheetKey], gen=!!GEN[sheetKey];
   document.getElementById("sheetName").textContent=m.name;
   document.getElementById("sheetDesc").textContent=m.desc;
   document.getElementById("rowCount").textContent=rows.length+(gen&&phraseBars>1?" phrases":" lines");
   document.getElementById("phraseWrap").style.display=gen?"flex":"none";
   document.getElementById("subdivWrap").style.display=gen?"flex":"none";
-  const host=document.getElementById("rows"); host.innerHTML=""; rowEls=[];
-  rows.forEach((row,ri)=>{
-    const pr=document.createElement("div"); pr.className="prow"+(ri===selRow?" sel":"");
-    const num=document.createElement("div"); num.className="num"; num.textContent=rowLabel(sheetKey,ri);
-    const cells=document.createElement("div"); cells.className="cells";
-    const cs=[];
-    row.forEach((tok,idx)=>{
-      if(idx>0 && idx%4===0){ const g=document.createElement("div"); g.className="cellgap"; cells.appendChild(g); }
-      const c=cellNode(tok); cells.appendChild(c); cs.push(c);
-    });
-    pr.appendChild(num); pr.appendChild(cells);
-    pr.addEventListener("click",()=>{ selRow=ri; markSel(); centerRow(pr); if(playing){ curRow=ri; curStep=0; } });
-    host.appendChild(pr);
-    rowEls.push({pr,cells:cs});
-  });
+  selRow=Math.max(0,Math.min(selRow,rows.length-1));
+  const host=document.getElementById("rows");
+  host.classList.toggle("scrollview",scrollView);
+  host.classList.toggle("virt",scrollView);
+  host.style.height=""; host.scrollLeft=0; host.scrollTop=0;
+  host.innerHTML=""; rowElByIndex.clear(); litCell=null; litRow=null; vspacer=null;
+  if(scrollView){
+    // measure one phrase for stride + height, then set up the virtual window
+    const probe=makeRow(selRow); probe.pr.style.position="static"; host.appendChild(probe.pr);
+    const rw=probe.pr.offsetWidth, rh=probe.pr.offsetHeight; host.removeChild(probe.pr);
+    stride=rw+SCROLL_GAP;
+    vspacer=document.createElement("div"); vspacer.className="vspacer";
+    vspacer.style.width=(rows.length*stride)+"px"; vspacer.style.height=rh+"px";
+    host.appendChild(vspacer);
+    host.style.height=(rh+18)+"px";
+    ensureMounted(selRow);
+    requestAnimationFrame(()=>scrollToRow(selRow));
+  } else {
+    for(let i=0;i<rows.length;i++){ const e=makeRow(i); host.appendChild(e.pr); rowElByIndex.set(i,e); }
+  }
   markSel();
 }
-function markSel(){ rowEls.forEach((r,i)=>r.pr.classList.toggle("sel",i===selRow)); }
+function ensureMounted(center){          // keep only [center-WIN_BACK, center+WIN_FWD) mounted
+  const host=document.getElementById("rows");
+  const start=Math.max(0,center-WIN_BACK), end=Math.min(rows.length,center+WIN_FWD);
+  for(const [i,e] of rowElByIndex){ if(i<start||i>=end){ e.pr.remove(); rowElByIndex.delete(i); } }
+  for(let i=start;i<end;i++){ if(!rowElByIndex.has(i)){ const e=makeRow(i); host.appendChild(e.pr); rowElByIndex.set(i,e); } }
+  markSel();
+  if(litRow!=null){ const R=rowElByIndex.get(litRow); if(R){ R.pr.classList.add("playing"); const c=R.cells[litStep]; if(c){ c.classList.add("lit"); litCell=c; } } }
+}
+function scrollToRow(i){                  // glide row i (its lit cell if any) to the playhead
+  const host=document.getElementById("rows"), R=rowElByIndex.get(i); if(!R) return;
+  const el=(litRow===i && R.cells[litStep])?R.cells[litStep]:R.pr;
+  const cr=host.getBoundingClientRect(), er=el.getBoundingClientRect();
+  const target=host.scrollLeft + (er.left-cr.left) - host.clientWidth*PLAYHEAD;
+  const near=Math.abs(target-host.scrollLeft) < stride*4;    // jump for big moves, glide for small
+  host.scrollTo({left:target, behavior: near?"smooth":"auto"});
+}
+function centerRow(el){ el.scrollIntoView({block:"center",behavior:"smooth"}); }   // list view
+function markSel(){ for(const [i,e] of rowElByIndex) e.pr.classList.toggle("sel", i===selRow); }
 
 function renderSheetList(){
   const host=document.getElementById("sheetList"); host.innerHTML="";
@@ -460,7 +514,7 @@ function renderSheetList(){
 }
 
 /* ---------- Highlight loop ---------- */
-let litCell=null, litRow=null;
+let litCell=null, litRow=null, litStep=0;
 function animate(){
   if(ctx){
     const now=ctx.currentTime;
@@ -474,37 +528,23 @@ function animate(){
   }
   requestAnimationFrame(animate);
 }
-const PLAYHEAD=0.30;     // keep the active figure ~30% from the left (read ahead to the right)
-function scrollRibbon(el,smooth){
-  const c=document.getElementById("rows");
-  const cr=c.getBoundingClientRect(), er=el.getBoundingClientRect();
-  const target=c.scrollLeft + (er.left-cr.left) - c.clientWidth*PLAYHEAD;
-  c.scrollTo({left:target, behavior: smooth?"smooth":"auto"});   // browser clamps at both ends
-}
-function centerRow(el){
-  if(scrollView) scrollRibbon(el,true);
-  else el.scrollIntoView({block:"center",behavior:"smooth"});
-}
 function lightStep(r,s){
-  const rowChanged = (r !== litRow);
-  if(litCell){ litCell.classList.remove("lit"); }
-  if(litRow!==null && litRow!==r && rowEls[litRow]) rowEls[litRow].pr.classList.remove("playing");
-  const R=rowEls[r]; if(!R) return;
-  R.pr.classList.add("playing");
-  const cell=R.cells[s];
-  if(cell){ cell.classList.add("lit"); litCell=cell; }
+  const rowChanged=(r!==litRow);
+  litStep=s;
+  if(litCell) litCell.classList.remove("lit");
+  if(rowChanged && litRow!=null){ const P=rowElByIndex.get(litRow); if(P) P.pr.classList.remove("playing"); }
   litRow=r;
-  if(scrollView){
-    // ribbon view: keep the active figure at the playhead, upcoming figures to the right
-    scrollRibbon(cell||R.pr,true);
-  } else if(mode==="all" && rowChanged){
-    // play-through: keep the active line off the transport bar
-    R.pr.scrollIntoView({block:"center",behavior:"smooth"});
-  }
+  if(scrollView) ensureMounted(r);          // make sure the playing row is in the window
+  const R=rowElByIndex.get(r);
+  if(!R){ litCell=null; return; }
+  R.pr.classList.add("playing");
+  const cell=R.cells[s]; litCell=cell||null; if(cell) cell.classList.add("lit");
+  if(scrollView) scrollToRow(r);
+  else if(mode==="all" && rowChanged) R.pr.scrollIntoView({block:"center",behavior:"smooth"});
 }
 function clearLit(){
   if(litCell) litCell.classList.remove("lit");
-  rowEls.forEach(r=>r.pr.classList.remove("playing"));
+  for(const [,e] of rowElByIndex) e.pr.classList.remove("playing");
   litCell=null; litRow=null;
 }
 const bd=document.getElementById("beatdot");
@@ -600,13 +640,21 @@ document.getElementById("subdivSeg").addEventListener("click",e=>{
 let userSetView=false;   // true once the user picks a view manually
 function setScrollView(v){
   scrollView=v;
-  document.getElementById("rows").classList.toggle("scrollview",v);
   document.querySelectorAll("#viewSeg button").forEach(b=>b.classList.toggle("on",(b.dataset.view==="scroll")===v));
-  if(rowEls[selRow]) centerRow(rowEls[selRow].pr);
+  renderSheet();         // re-render for the axis change (list flow vs. virtual ribbon)
 }
 document.getElementById("viewSeg").addEventListener("click",e=>{
   const b=e.target.closest("button"); if(!b) return;
   userSetView=true; setScrollView(b.dataset.view==="scroll");
+});
+// manual swipe/scroll in the ribbon: keep the mounted window around what's on screen
+document.getElementById("rows").addEventListener("scroll",()=>{
+  if(!scrollView || scrollRAF) return;
+  scrollRAF=true;
+  requestAnimationFrame(()=>{ scrollRAF=false;
+    const host=document.getElementById("rows");
+    ensureMounted(Math.round((host.scrollLeft+host.clientWidth*PLAYHEAD)/stride));
+  });
 });
 // auto-switch to the ribbon on a landscape phone, unless the user chose manually
 const mqPhoneLandscape=window.matchMedia("(orientation:landscape) and (max-height:600px)");
@@ -619,7 +667,9 @@ document.addEventListener("keydown",e=>{
   if(prev||next){
     e.preventDefault();
     selRow=next?Math.min(rows.length-1,selRow+1):Math.max(0,selRow-1);
-    markSel(); centerRow(rowEls[selRow].pr);
+    markSel();
+    if(scrollView){ ensureMounted(selRow); scrollToRow(selRow); }
+    else { const R=rowElByIndex.get(selRow); if(R) centerRow(R.pr); }
     if(playing){ curRow=selRow; curStep=0; }
   }
 });
@@ -634,10 +684,28 @@ window.addEventListener("resize",fitTransport);
 /* ---------- Boot ---------- */
 renderSheetList();
 renderSheet();
-if(location.hash.replace("#","")==="scroll"){ userSetView=true; setScrollView(true); }  // deep-link to ribbon
+const bootHash=location.hash.replace("#","");
+if(bootHash==="scroll"){ userSetView=true; setScrollView(true); }        // deep-link to ribbon
+else if(bootHash==="selftest"){ runSelfTest(); }                         // headless virtualization check
 else applyAutoView();     // otherwise start in the ribbon only if launched in phone-landscape
 fitTransport();
 requestAnimationFrame(animate);
+
+// Simulate lighting rows across the sheet and report the max DOM rows kept mounted.
+function runSelfTest(){
+  userSetView=true; setScrollView(true);
+  let i=0, maxMounted=0;
+  const t=setInterval(()=>{
+    const len=(rows[i]&&rows[i].length)||8;
+    lightStep(i, i%len);
+    maxMounted=Math.max(maxMounted, document.querySelectorAll("#rows .prow").length);
+    if(++i>90){ clearInterval(t);
+      const h=document.getElementById("hintbar"); h.style.display="block";
+      h.textContent="SELFTEST rows="+rows.length+" maxMounted="+maxMounted+
+        " mountedNow="+document.querySelectorAll("#rows .prow").length;
+    }
+  },6);
+}
 </script>
 </body>
 </html>
