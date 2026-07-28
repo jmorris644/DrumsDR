@@ -1,0 +1,9 @@
+{
+  "name": "drumsdr",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Drum Coordination Trainer — static Web Audio app",
+  "scripts": {
+    "test": "node test/drills.test.js"
+  }
+}
