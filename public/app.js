@@ -168,6 +168,31 @@ let selRow=0;
 let mode="row";
 let bpm=70;
 let playing=false;
+let favView=false;                              // showing the Favorites folder
+let isolate=false, isoLabel="", isoBack=null;   // Scroll "focus one exercise" mode
+const ISO_COPIES=2000;                          // repeats of the focused exercise (endless conveyor)
+
+/* ---------- Favorites (on-device; heart-tap) ----------
+   localStorage {v:1, items:[{sheet,bars,label,name,tokens}]}. Stable identity =
+   sheet|bars|label; tokens are kept so the folder renders without rebuilding a sheet.
+   Structured to migrate to a synced account store later (bump v, add an id/owner). */
+const FAV_KEY="drumsdr.favorites.v1";
+let favs=loadFavs();
+function loadFavs(){ try{ const j=JSON.parse(localStorage.getItem(FAV_KEY)); return (j&&Array.isArray(j.items))?j.items:[]; }catch(e){ return []; } }
+function saveFavs(){ try{ localStorage.setItem(FAV_KEY, JSON.stringify({v:1,items:favs})); }catch(e){} }
+function favKey(sheet,bars,label){ return sheet+"|"+bars+"|"+label; }
+function favIndex(sheet,bars,label){ const k=favKey(sheet,bars,label); return favs.findIndex(f=>favKey(f.sheet,f.bars,f.label)===k); }
+function isFav(sheet,bars,label){ return favIndex(sheet,bars,label)>=0; }
+function toggleFav(sheet,bars,label,name,tokens){
+  const i=favIndex(sheet,bars,label);
+  if(i>=0) favs.splice(i,1); else favs.push({sheet,bars,label,name,tokens:tokens.slice()});
+  saveFavs(); updateFavCount();
+  return i<0;                                   // true = now a favorite
+}
+function updateFavCount(){
+  const b=document.getElementById("favSheetBtn"); if(!b) return;
+  const tg=b.querySelector(".tg"); if(tg) tg.textContent="Saved · "+favs.length+(favs.length===1?" line":" lines");
+}
 
 // scheduler
 let curRow=0, curStep=0, nextTime=0, beatCount=0;
@@ -189,27 +214,46 @@ const PLAYHEAD=0.30;    // active figure sits ~30% from the left of the ribbon
 function makeRow(i){
   const row=rows[i];
   const pr=document.createElement("div"); pr.className="prow"+(i===selRow?" sel":"");
-  const num=document.createElement("div"); num.className="num"; num.textContent=rowLabel(sheetKey,i);
+  const num=document.createElement("div"); num.className="num"; num.textContent=isolate?isoLabel:rowLabel(sheetKey,i);
   const cells=document.createElement("div"); cells.className="cells"; const cs=[];
   row.forEach((tok,idx)=>{
     if(idx>0 && idx%4===0){ const g=document.createElement("div"); g.className="cellgap"; cells.appendChild(g); }
     const c=cellNode(tok); cells.appendChild(c); cs.push(c);
   });
   pr.appendChild(num); pr.appendChild(cells);
-  pr.addEventListener("click",()=>{ selRow=i; markSel();
-    if(scrollView){ ensureMounted(i); scrollToRow(i); } else centerRow(pr);
-    if(playing){ curRow=i; curStep=0; } });
+  if(!scrollView && !isolate) pr.appendChild(favBtn(i));   // heart on list rows
+  pr.addEventListener("click",()=>{
+    if(isolate) return;                                    // copies aren't individually selectable
+    if(scrollView){ enterIsolate(i); return; }             // tap a ribbon exercise → focus it
+    selRow=i; markSel(); centerRow(pr);
+    if(playing){ curRow=i; curStep=0; }
+  });
   if(scrollView){ pr.style.left=(i*stride)+"px"; pr.style.top="0"; }   // absolutely placed
   return {pr,cells:cs};
 }
+function favBtn(i){
+  const label=rowLabel(sheetKey,i), on=isFav(sheetKey,phraseBars,label);
+  const b=document.createElement("button"); b.className="favbtn"+(on?" on":""); b.type="button";
+  b.textContent=on?"♥":"♡"; b.title=on?"Remove from favorites":"Save to favorites";
+  b.addEventListener("click",ev=>{
+    ev.stopPropagation();
+    const now=toggleFav(sheetKey,phraseBars,label,DATA.meta[sheetKey].name,rows[i]);
+    b.classList.toggle("on",now); b.textContent=now?"♥":"♡";
+    b.title=now?"Remove from favorites":"Save to favorites";
+  });
+  return b;
+}
 function renderSheet(){
-  rows=buildRows(sheetKey);
+  if(favView){ renderFavorites(); return; }
+  if(!isolate) rows=buildRows(sheetKey);         // isolate keeps its own copies array
   const m=DATA.meta[sheetKey], gen=!!GEN[sheetKey], phrasable=!!baseFigures(sheetKey);
-  document.getElementById("sheetName").textContent=m.name;
-  document.getElementById("sheetDesc").textContent=m.desc;
-  document.getElementById("rowCount").textContent=rows.length+(phrasable&&phraseBars>1?" phrases":" lines");
-  document.getElementById("phraseWrap").style.display=phrasable?"flex":"none";   // linear sets phrase too
-  document.getElementById("subdivWrap").style.display=gen?"flex":"none";         // 8th/16th: two-symbol drills only
+  document.getElementById("sheetName").textContent=isolate?("Focus · "+isoLabel):m.name;
+  document.getElementById("sheetDesc").textContent=isolate?(m.name+" — one exercise, endlessly repeating. Tap ✕ Exit focus to go back."):m.desc;
+  document.getElementById("rowCount").textContent=isolate?"focus":(rows.length+(phrasable&&phraseBars>1?" phrases":" lines"));
+  document.getElementById("phraseWrap").style.display=(!isolate&&phrasable)?"flex":"none";   // linear sets phrase too
+  document.getElementById("subdivWrap").style.display=(!isolate&&gen)?"flex":"none";         // 8th/16th: two-symbol drills only
+  const vw=document.getElementById("viewWrap"); if(vw) vw.style.display=isolate?"none":"flex";
+  const ie=document.getElementById("isoExit"); if(ie) ie.style.display=isolate?"inline-flex":"none";
   selRow=Math.max(0,Math.min(selRow,rows.length-1));
   const host=document.getElementById("rows");
   host.classList.toggle("scrollview",scrollView);
@@ -235,19 +279,102 @@ function renderSheet(){
   fitCells();
 }
 /* Shrink the shapes in List view so a whole phrase (esp. 4 bars = 16 cells) fits on one
-   line — on a phone and on a laptop. Scroll view keeps the default size (it scrolls). */
-function fitCells(){
+   line — on a phone and on a laptop. Scroll view keeps the default size (it scrolls).
+   `chrome` = the row's non-cell width (number col, gaps, padding, heart button). */
+function cellSizeFor(n, chrome){
   const host=document.getElementById("rows");
-  if(scrollView){ host.style.removeProperty("--cell"); return; }
-  const n=(rows[0]&&rows[0].length)||4;
   const barGaps=Math.max(0,Math.ceil(n/4)-1);          // dashed barline between figures
   const w=host.clientWidth||document.documentElement.clientWidth||360;
-  const chrome=54+12+20+2;                             // num col + grid gap + prow padding + border
-  const avail=Math.max(80,(w-chrome)*0.98);
+  const avail=Math.max(80,(w-(chrome||136))*0.98);
   const items=n+barGaps;                               // cells + barlines are all flex children
   const denom=n + (items-1)*0.29 + barGaps*0.36;       // flex gap between items + barline margins
-  const cell=Math.max(9,Math.min(34,(avail-barGaps*2)/denom));
-  host.style.setProperty("--cell",cell.toFixed(2)+"px");
+  return Math.max(9,Math.min(34,(avail-barGaps*2)/denom));
+}
+function fitCells(){
+  const host=document.getElementById("rows");
+  if(favView){ return; }                 // the folder sizes its own cells in renderFavorites
+  if(scrollView){ host.style.removeProperty("--cell"); return; }
+  const n=(rows[0]&&rows[0].length)||4;
+  host.style.setProperty("--cell", cellSizeFor(n,136).toFixed(2)+"px");   // 136 leaves room for the heart
+}
+/* ---------- Favorites folder ---------- */
+function renderFavorites(){
+  document.getElementById("sheetName").textContent="★ Favorites";
+  document.getElementById("sheetDesc").textContent=favs.length
+    ? "Your saved lines (this device). Tap one to open it in its drill."
+    : "";
+  document.getElementById("rowCount").textContent=favs.length+(favs.length===1?" line":" lines");
+  document.getElementById("phraseWrap").style.display="none";
+  document.getElementById("subdivWrap").style.display="none";
+  const vw=document.getElementById("viewWrap"); if(vw) vw.style.display="none";
+  const ie=document.getElementById("isoExit"); if(ie) ie.style.display="none";
+  const host=document.getElementById("rows");
+  host.classList.remove("scrollview","virt");
+  host.style.height=""; host.scrollLeft=0; host.scrollTop=0; host.style.removeProperty("--cell");
+  host.innerHTML=""; rowElByIndex.clear(); litCell=null; litRow=null; vspacer=null;
+  if(!favs.length){
+    const e=document.createElement("div"); e.className="emptyfav";
+    e.textContent="No favorites yet — tap the ♥ on any line to save it here.";
+    host.appendChild(e); return;
+  }
+  const maxN=favs.reduce((m,f)=>Math.max(m,f.tokens.length),4);
+  const setFavCell=()=>host.style.setProperty("--cell", cellSizeFor(maxN,172).toFixed(2)+"px");   // 172: wider label column
+  setFavCell(); requestAnimationFrame(()=>{ if(favView) setFavCell(); });   // re-measure after layout settles
+  favs.forEach(f=>{
+    const pr=document.createElement("div"); pr.className="prow favrow";
+    const num=document.createElement("div"); num.className="num";
+    num.innerHTML=`<div class="favlbl">${f.label}</div><div class="favsrc">${f.name} · ${f.bars} bar</div>`;
+    const cells=document.createElement("div"); cells.className="cells";
+    f.tokens.forEach((tok,idx)=>{
+      if(idx>0 && idx%4===0){ const g=document.createElement("div"); g.className="cellgap"; cells.appendChild(g); }
+      cells.appendChild(cellNode(tok));
+    });
+    const hb=document.createElement("button"); hb.className="favbtn on"; hb.type="button";
+    hb.textContent="♥"; hb.title="Remove from favorites";
+    hb.addEventListener("click",ev=>{ ev.stopPropagation(); toggleFav(f.sheet,f.bars,f.label,f.name,f.tokens); renderFavorites(); });
+    pr.appendChild(num); pr.appendChild(cells); pr.appendChild(hb);
+    pr.addEventListener("click",()=>openFavoriteTarget(f));
+    host.appendChild(pr);
+  });
+}
+function openFavorites(){
+  if(playing) stop();
+  favView=true; isolate=false;
+  renderSheetList();               // single source of truth for the active highlight
+  renderSheet();
+}
+function openFavoriteTarget(f){                 // jump from the folder to the real exercise
+  if(playing) stop();
+  favView=false; isolate=false;
+  sheetKey=f.sheet; phraseBars=f.bars;
+  document.querySelectorAll("#phraseSeg button").forEach(x=>x.classList.toggle("on",+x.dataset.bars===phraseBars));
+  const built=buildRows(sheetKey); let idx=0;
+  for(let i=0;i<built.length;i++){ if(rowLabel(sheetKey,i)===f.label){ idx=i; break; } }
+  selRow=idx; curRow=idx; curStep=0;
+  renderSheetList(); renderSheet();
+  if(scrollView){ ensureMounted(selRow); scrollToRow(selRow); }
+  else { const R=rowElByIndex.get(selRow); if(R) centerRow(R.pr); }
+}
+/* ---------- Scroll focus: one exercise, endlessly repeating ---------- */
+function enterIsolate(i){
+  isoLabel=rowLabel(sheetKey,i);
+  const tokens=rows[i].slice();
+  isoBack={ selRow:i, mode };
+  isolate=true; mode="all";                     // stream through the copies = continuous conveyor
+  document.querySelectorAll("#modeSeg button").forEach(x=>x.classList.toggle("on",x.dataset.mode==="all"));
+  rows=Array.from({length:ISO_COPIES},()=>tokens);
+  selRow=0; curRow=0; curStep=0; scrollView=true;
+  renderSheet();
+  if(!playing) start(); else { curRow=0; curStep=0; }
+}
+function exitIsolate(){
+  const back=isoBack||{selRow:0,mode:"row"};
+  if(playing) pause();
+  isolate=false; mode=back.mode;
+  document.querySelectorAll("#modeSeg button").forEach(x=>x.classList.toggle("on",x.dataset.mode===mode));
+  rows=buildRows(sheetKey);
+  selRow=Math.min(back.selRow, rows.length-1); curRow=selRow; curStep=0;
+  renderSheet();
 }
 function ensureMounted(center){          // keep only [center-WIN_BACK, center+WIN_FWD) mounted
   const host=document.getElementById("rows");
@@ -270,12 +397,16 @@ function markSel(){ for(const [i,e] of rowElByIndex) e.pr.classList.toggle("sel"
 
 function renderSheetList(){
   const host=document.getElementById("sheetList"); host.innerHTML="";
+  const fb=document.createElement("button"); fb.id="favSheetBtn"; fb.className="sheet favsheet"+(favView?" active":"");
+  fb.innerHTML=`<div class="nm">★ Favorites</div><div class="tg">Saved · ${favs.length}${favs.length===1?" line":" lines"}</div>`;
+  fb.addEventListener("click",openFavorites);
+  host.appendChild(fb);
   DATA.order.forEach(k=>{
     const m=DATA.meta[k];
-    const b=document.createElement("button"); b.className="sheet"+(k===sheetKey?" active":"");
+    const b=document.createElement("button"); b.className="sheet"+(!favView&&!isolate&&k===sheetKey?" active":"");
     const cnt=rowCountFor(k); const unit=(baseFigures(k)&&phraseBars>1)?"phrases":"lines";
     b.innerHTML=`<div class="nm">${m.name}</div><div class="tg">${m.tag} · ${cnt} ${unit}</div>`;
-    b.addEventListener("click",()=>{ sheetKey=k; selRow=0; curRow=0; curStep=0;
+    b.addEventListener("click",()=>{ favView=false; isolate=false; sheetKey=k; selRow=0; curRow=0; curStep=0;
       document.querySelectorAll(".sheet").forEach(x=>x.classList.remove("active")); b.classList.add("active");
       renderSheet(); });
     host.appendChild(b);
@@ -386,6 +517,7 @@ function scheduler(){
   while(nextTime < ctx.currentTime + AHEAD){ scheduleStep(); }
 }
 function start(){
+  if(favView) return;              // the folder isn't a playable context — tap a line to open it
   initAudio();
   if(ctx.state==="suspended") ctx.resume();
   playing=true;
@@ -406,6 +538,7 @@ function stop(){ pause(); curRow= mode==="row"?selRow:0; curStep=0; visQ=[]; }
 /* ---------- Controls ---------- */
 document.getElementById("playBtn").addEventListener("click",()=> playing?pause():start());
 document.getElementById("stopBtn").addEventListener("click",stop);
+document.getElementById("isoExit").addEventListener("click",exitIsolate);
 const bpmEl=document.getElementById("bpm"), bpmVal=document.getElementById("bpmVal");
 bpmEl.addEventListener("input",()=>{ bpm=+bpmEl.value; bpmVal.textContent=bpm; });
 document.getElementById("vol").addEventListener("input",e=>{ if(master) master.gain.value=e.target.value/100; });
@@ -460,6 +593,7 @@ document.addEventListener("keydown",e=>{
   const prev=(e.code==="ArrowUp"||e.code==="ArrowLeft"), next=(e.code==="ArrowDown"||e.code==="ArrowRight");
   if(prev||next){
     e.preventDefault();
+    if(favView||isolate) return;              // no per-line selection in the folder / focus mode
     selRow=next?Math.min(rows.length-1,selRow+1):Math.max(0,selRow-1);
     markSel();
     if(scrollView){ ensureMounted(selRow); scrollToRow(selRow); }
@@ -473,7 +607,7 @@ function fitTransport(){
   const t=document.querySelector(".transport"), w=document.querySelector(".wrap");
   if(t&&w) w.style.paddingBottom=(t.offsetHeight+16)+"px";
 }
-window.addEventListener("resize",()=>{ fitTransport(); fitCells(); });
+window.addEventListener("resize",()=>{ fitTransport(); if(favView) renderFavorites(); else fitCells(); });
 
 /* ---------- Boot ---------- */
 renderSheetList();

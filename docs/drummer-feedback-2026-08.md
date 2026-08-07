@@ -109,9 +109,13 @@ Colors: red = left hand, blue = right hand, orange = left foot, green = right fo
 3. Add the 1/4-note option to the Note toggle.
 4. Draw all 12 drum-key symbols in the Key legend.
 
-**Phase 2 — Favorites + Scroll-isolate**
-- Heart-tap favorites in localStorage (structured to sync to accounts later).
-- Tap an exercise in Scroll → isolate it and endlessly repeat-scroll; back to return.
+**Phase 2 — Favorites + Scroll-isolate — DONE (branch only)**
+- Heart-tap favorites in localStorage (`drumsdr.favorites.v1`, structured to sync to
+  accounts later); a **★ Favorites** folder at the top of the drills list; tapping a
+  favorite navigates to it in its source drill. (`favView` + `favs` in `app.js`.)
+- Tap an exercise in Scroll → focus mode: `enterIsolate()` streams `ISO_COPIES` copies of
+  the one exercise as an endless conveyor (mode forced to play-through), "✕ Exit focus"
+  restores. Timing stays correct because the source `sheetKey` still drives `perBeat`.
 
 **Phase 3 — Interactive drum-key page**
 - New in-app screen. Per-symbol (2-symbol drills) / per-limb (linear) color+instrument

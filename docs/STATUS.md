@@ -21,6 +21,13 @@ source specs are in `drummer-feedback-2026-07.md`.
 
 ## Recently delivered
 
+- **Round 2, Phase 2 (Aug 2026):**
+  - **Favorites (♥).** Every line in List view has a heart; tap it to save the line to a
+    **★ Favorites** folder at the top of the drills list. Saved **on this device**
+    (localStorage); tapping a favorite opens it in its own drill. (Cross-device sync waits
+    for accounts.)
+  - **Scroll focus.** Tap any exercise in the Scroll ribbon to pull it up on its own — it
+    then **endlessly repeat-scrolls** that one pattern. "✕ Exit focus" returns to the ribbon.
 - **Round 2, Phase 1 (Aug 2026 — see `drummer-feedback-2026-08.md`):**
   - **Paradiddles now complete.** 2- and 4-bar step through *every* valid combination
     under the rule "no 3 of the same hand in a row, even when looped" — **46** two-bar and
@@ -70,8 +77,6 @@ source specs are in `drummer-feedback-2026-07.md`.
 
 ## Not built yet
 
-- **Round 2, Phase 2:** heart-tap **favorites** (saved on-device) and **tap-to-isolate** in
-  Scroll (endlessly repeat-scroll one exercise).
 - **Round 2, Phase 3:** the interactive **drum-key page** — assign a color (limb) +
   instrument per symbol/limb (enforcing the drummer's instrument rules), re-render and play
   the real sounds; rests (blank, holds the slot) and ghost notes (snare, hands only).
