@@ -1,4 +1,4 @@
-# DrumsDR — Current State (2026-07-28)
+# DrumsDR — Current State (2026-08-07)
 
 Live: <https://drumsdr.web.app>. This is the "what's in the app now" summary for the
 drummer/partner who authors the specs. For how it's built, see `ARCHITECTURE.md`. Raw
@@ -17,10 +17,22 @@ source specs are in `drummer-feedback-2026-07.md`.
 | Three-Limb Linear — Right Foot (RH·LH·RF, green) | **36** | 1,296 |
 | Three-Limb Linear — Left Foot (RH·LH·LF, orange) | **36** | 1,296 |
 | Four-Limb Linear | 24 | 576 |
-| Paradiddles (hands) | 10 | **45** (2-bar) · **290** (4-bar) |
+| Paradiddles (hands) | 10 | **46** (2-bar) · **2,206** (4-bar) |
 
 ## Recently delivered
 
+- **Round 2, Phase 1 (Aug 2026 — see `drummer-feedback-2026-08.md`):**
+  - **Paradiddles now complete.** 2- and 4-bar step through *every* valid combination
+    under the rule "no 3 of the same hand in a row, even when looped" — **46** two-bar and
+    **2,206** four-bar (generated, replacing the hand-curated 45/290). This dropped `2,8`
+    (broke the rule on the loop) and added the missing `3,3` and `10,10`.
+  - **4-bar fits on one line.** The shapes auto-scale so a whole 4-bar phrase stays on a
+    single row — on a phone and on a laptop (no more 4th figure wrapping).
+  - **1/4-note option** added to the Note toggle (now 1/4 · 8th · 16th) on the hand/foot
+    drills — an even slower feel.
+  - **Full drum key.** The Key panel now shows the whole kit: snare, kick, left/right/floor
+    tom, closed/open hi-hat, ride, left/right crash, ghost note, and rest (blank). (These
+    are shown in the key now; applying them to exercises is Phase 3.)
 - **Page-1 asks (earlier):** two-bar (every 16 figures paired, 256) and four-bar phrase
   views; landscape scrolling ribbon that lights each figure in time; metronome in 8th-note
   feel (default) for a wider slow↔fast range.
@@ -38,7 +50,7 @@ source specs are in `drummer-feedback-2026-07.md`.
 ## Practice features (all sets)
 
 - 1 / 2 / 4-bar phrase view.
-- Metronome with 8th- or 16th-note feel (on the hand/foot pairing drills), count-in.
+- Metronome with 1/4-, 8th- or 16th-note feel (on the hand/foot pairing drills), count-in.
 - Tempo 30–200 BPM, volume.
 - Loop one line, or play through a whole set.
 - Landscape (or the *Scroll* button) = a ribbon that scrolls the figures left→right and
@@ -47,9 +59,9 @@ source specs are in `drummer-feedback-2026-07.md`.
 
 ## Decisions / assumptions to confirm
 
-1. **Paradiddle list cleanup:** removed 9 exact duplicate four-figure combos (e.g. `1,4,2,8`
-   listed twice); validated every reference is a real figure 1–10 (all valid — figures 9/10
-   are used rarely but kept); kept his list order.
+1. **Paradiddles are now generated, not curated** (round 2): the app enumerates the full
+   valid set (46 / 2,206) under the no-3-in-a-row-looped rule, so the old hand-curated
+   45/290 lists (with their dupes and 47 rule-breakers at 4 bars) are retired.
 2. **Three-limb order:** "original 11 first, then completed." If a specific order is wanted,
    supply it and we'll match.
 3. **Paradiddles are hands-only** — no feet or skill-level variants built yet.
@@ -58,6 +70,12 @@ source specs are in `drummer-feedback-2026-07.md`.
 
 ## Not built yet
 
+- **Round 2, Phase 2:** heart-tap **favorites** (saved on-device) and **tap-to-isolate** in
+  Scroll (endlessly repeat-scroll one exercise).
+- **Round 2, Phase 3:** the interactive **drum-key page** — assign a color (limb) +
+  instrument per symbol/limb (enforcing the drummer's instrument rules), re-render and play
+  the real sounds; rests (blank, holds the slot) and ghost notes (snare, hands only).
+  See `drummer-feedback-2026-08.md`.
 - The **daily-text paradiddle subscription campaign** — on hold. It's a separate backend
   product (SMS provider + billing). The cleaned paradiddle combo data now in the app is the
   content it would reuse. Long-lead item when we start: Twilio A2P 10DLC registration; also

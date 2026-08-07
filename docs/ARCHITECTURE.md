@@ -45,10 +45,12 @@ DATA = {
   order:  [sheetKey, ...],                       // display order of the drill sheets
   meta:   { sheetKey: {name, tag, desc} },       // sheet header text
   sheets: { sheetKey: [ figure, ... ] },         // a figure = ["RHs","LHs",...] (4 tokens)
-  combos: { sheetKey: { "2": [[i,j],...],        // curated combos (paradiddles only)
-                        "4": [[i,j,k,l],...] } }  // 1-based figure indices, his notation
 }
 ```
+
+A sheet may optionally ship an explicit `DATA.combos[key] = {"2":[[i,j]…],"4":[[i,j,k,l]…]}`
+list (1-based figure indices), but nothing does today — paradiddles now **generate** their
+combos in `phrases.js` (see below).
 
 **Token = limb + voice.** Limb ∈ `RH`(right hand) `LH`(left hand) `RF`(right foot)
 `LF`(left foot); voice letter ∈ `s`(snare) `k`(kick) `t`(tom) `h`(hat) `r`(ride) `c`(crash).
@@ -64,16 +66,20 @@ returns the sheet's list of one-bar figures (or `null` for a non-phrasing sheet)
    orderings of two symbols (`PAT16`) are generated on the fly.
 2. **Linear** — keys in `LINEAR` (`RHLHRF`, `RHLHLF`, `RHLHRFLF`). Figures come straight
    from `DATA.sheets[key]` (hand-curated figure lists: 36 / 36 / 24).
-3. **Curated combos** — keys with a `DATA.combos[key]` entry (currently `paradiddle`).
-   Figures come from `DATA.sheets[key]` (the 10 stickings).
+3. **Combo sheets** — `paradiddle`. Figures are `DATA.sheets[key]` (the 10 stickings); the
+   2-/4-bar *combos* are supplied by `comboList(key)`. Paradiddle is in the `NO3` set, so
+   `comboList` **generates** every valid combo — every combination of the figures with no
+   run of 3+ of the same limb anywhere, checked **cyclically** (each exercise loops on
+   itself): **46** two-bar, **2,206** four-bar (memoized). A sheet could instead read an
+   explicit `DATA.combos[key]` list.
 
 **Phrase length** is the global `phraseBars` (1, 2, or 4). `buildRows(key)`:
 
 - **1 bar** → the base figures themselves.
 - **2 / 4 bar, generated & linear** → *every ordered pair* `(i,j)` of figures. 2-bar =
   `figs[i] ++ figs[j]`; 4-bar = arch form `i,j,j,i`. Count = `n²`.
-- **2 / 4 bar, curated** → only the combos in `DATA.combos[key]["2"|"4"]`, in the drummer's
-  own order and numbering. `rowLabel` shows his notation (`1,4`, `1,4,1,5`).
+- **2 / 4 bar, combo sheet** → only the combos from `comboList(key)["2"|"4"]` (generated for
+  paradiddles), in lexicographic figure order. `rowLabel` shows the notation (`1,4`, `1,4,1,5`).
 
 `rowLabel` and `rowCountFor` mirror the same three cases. The `8th/16th` note-value toggle
 is shown for generated sheets only; linear and curated read as straight 16ths.
@@ -107,9 +113,9 @@ const perBeat = GEN[sheetKey] ? notesPerBeat : (baseFigures(sheetKey) ? 4 : step
   generate automatically.
 - **Linear / figure list**: add the figure list to `DATA.sheets[key]`, add `key` to the
   `LINEAR` set in `phrases.js`, + `meta`/`order`.
-- **Curated combos**: add `DATA.sheets[key]` (base figures) + `DATA.combos[key]` (the `"2"`
-  / `"4"` tuple lists) + `meta`/`order`. No `phrases.js` change needed — `comboList(key)`
-  picks it up.
+- **Combo sheet**: add `DATA.sheets[key]` (base figures) + `meta`/`order`. Then either add
+  `key` to `NO3` in `phrases.js` to auto-generate the no-3-in-a-row combos, or ship an
+  explicit `DATA.combos[key]` (`"2"`/`"4"` tuple lists) — `comboList(key)` picks up either.
 
 Regenerate/patch `drills.js` with a small node script (load `DATA` via `new Function`,
 mutate, `JSON.stringify` back) rather than hand-editing the long line. Then add assertions

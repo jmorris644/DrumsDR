@@ -6,19 +6,38 @@ const LIMB = {
 };
 const VOICE = {s:"snare", k:"kick", t:"tom", h:"hat", r:"ride", c:"crash"};
 
-/* ---------- SVG shapes (match drumkey.pdf) ---------- */
+/* ---------- SVG shapes (match PDFs/drumkey.pdf) ----------
+   Full kit: snare ● kick ■ left tom ◉ right tom ◎ floor tom ○ closed hat ◆ open hat ◇
+   ride ⬟ left crash ▼ right crash ▲ ghost · rest (blank). Color = limb, shape = voice. */
 function shapeSVG(voice,color){
   const c=color;
   switch(voice){
-    case "kick":  return `<rect x="4" y="4" width="24" height="24" rx="2" fill="${c}"/>`;
-    case "snare": return `<circle cx="16" cy="16" r="12" fill="${c}"/>`;
-    case "tom":   return `<circle cx="16" cy="16" r="12" fill="none" stroke="${c}" stroke-width="4"/>`;
-    case "hat":   return `<path d="M16 3 L29 16 L16 29 L3 16 Z" fill="${c}"/>`;
-    case "ride":  return `<path d="M16 3 L28 12 L23 27 L9 27 L4 12 Z" fill="${c}"/>`;
-    case "crash": return `<path d="M16 4 L28 27 L4 27 Z" fill="${c}"/>`;
-    default:      return `<circle cx="16" cy="16" r="11" fill="${c}"/>`;
+    case "snare":     return `<circle cx="16" cy="16" r="12" fill="${c}"/>`;
+    case "kick":      return `<rect x="4" y="4" width="24" height="24" rx="2" fill="${c}"/>`;
+    case "lefttom":   return `<path fill-rule="evenodd" fill="${c}" d="M4 16a12 12 0 1 0 24 0a12 12 0 1 0-24 0ZM12 16a4 4 0 1 0 8 0a4 4 0 1 0-8 0Z"/>`;
+    case "righttom":  return `<circle cx="16" cy="16" r="11" fill="none" stroke="${c}" stroke-width="5"/>`;
+    case "floortom":  return `<circle cx="16" cy="16" r="12" fill="none" stroke="${c}" stroke-width="2"/>`;
+    case "closedhat":
+    case "hat":       return `<path d="M16 3 L29 16 L16 29 L3 16 Z" fill="${c}"/>`;
+    case "openhat":   return `<path d="M16 3 L29 16 L16 29 L3 16 Z" fill="none" stroke="${c}" stroke-width="2.5"/>`;
+    case "ride":      return `<path d="M16 3 L28 12 L23 27 L9 27 L4 12 Z" fill="${c}"/>`;
+    case "leftcrash": return `<path d="M4 5 L28 5 L16 28 Z" fill="${c}"/>`;
+    case "rightcrash":
+    case "crash":     return `<path d="M16 4 L28 27 L4 27 Z" fill="${c}"/>`;
+    case "tom":       return `<circle cx="16" cy="16" r="12" fill="none" stroke="${c}" stroke-width="4"/>`;
+    case "ghost":     return `<circle cx="16" cy="16" r="4" fill="${c}"/>`;
+    case "rest":      return ``;   // blank — holds its slot, no shape
+    default:          return `<circle cx="16" cy="16" r="11" fill="${c}"/>`;
   }
 }
+// The full instrument key (voice code, label) — shown in the Key panel.
+const INSTRUMENTS=[
+  ["snare","Snare"],["kick","Kick"],
+  ["lefttom","Left tom"],["righttom","Right tom"],["floortom","Floor tom"],
+  ["closedhat","Closed hi-hat"],["openhat","Open hi-hat"],["ride","Ride"],
+  ["leftcrash","Left crash"],["rightcrash","Right crash"],
+  ["ghost","Ghost note"],["rest","Rest (blank)"],
+];
 function cellNode(token){
   const limb=token.slice(0,2), voice=VOICE[token.slice(2)]||"snare";
   const el=document.createElement("div"); el.className="cell v-"+voice;
@@ -36,7 +55,7 @@ function cellNode(token){
     ll.appendChild(d);
   }
   const vl=document.getElementById("voiceLegend");
-  [["snare","Hands → snare (circle)"],["kick","Feet → kick (square)"]].forEach(([v,label])=>{
+  INSTRUMENTS.forEach(([v,label])=>{
     const d=document.createElement("div"); d.className="row";
     d.innerHTML=`<svg viewBox="0 0 32 32" width="18" height="18">${shapeSVG(v,"#9fb0c3")}</svg>${label}`;
     vl.appendChild(d);
@@ -196,6 +215,7 @@ function renderSheet(){
   host.classList.toggle("scrollview",scrollView);
   host.classList.toggle("virt",scrollView);
   host.style.height=""; host.scrollLeft=0; host.scrollTop=0;
+  host.style.removeProperty("--cell");   // scroll probe measures at default size; fitCells resets it below
   host.innerHTML=""; rowElByIndex.clear(); litCell=null; litRow=null; vspacer=null;
   if(scrollView){
     // measure one phrase for stride + height, then set up the virtual window
@@ -212,6 +232,22 @@ function renderSheet(){
     for(let i=0;i<rows.length;i++){ const e=makeRow(i); host.appendChild(e.pr); rowElByIndex.set(i,e); }
   }
   markSel();
+  fitCells();
+}
+/* Shrink the shapes in List view so a whole phrase (esp. 4 bars = 16 cells) fits on one
+   line — on a phone and on a laptop. Scroll view keeps the default size (it scrolls). */
+function fitCells(){
+  const host=document.getElementById("rows");
+  if(scrollView){ host.style.removeProperty("--cell"); return; }
+  const n=(rows[0]&&rows[0].length)||4;
+  const barGaps=Math.max(0,Math.ceil(n/4)-1);          // dashed barline between figures
+  const w=host.clientWidth||document.documentElement.clientWidth||360;
+  const chrome=54+12+20+2;                             // num col + grid gap + prow padding + border
+  const avail=Math.max(80,(w-chrome)*0.98);
+  const items=n+barGaps;                               // cells + barlines are all flex children
+  const denom=n + (items-1)*0.29 + barGaps*0.36;       // flex gap between items + barline margins
+  const cell=Math.max(9,Math.min(34,(avail-barGaps*2)/denom));
+  host.style.setProperty("--cell",cell.toFixed(2)+"px");
 }
 function ensureMounted(center){          // keep only [center-WIN_BACK, center+WIN_FWD) mounted
   const host=document.getElementById("rows");
@@ -437,7 +473,7 @@ function fitTransport(){
   const t=document.querySelector(".transport"), w=document.querySelector(".wrap");
   if(t&&w) w.style.paddingBottom=(t.offsetHeight+16)+"px";
 }
-window.addEventListener("resize",fitTransport);
+window.addEventListener("resize",()=>{ fitTransport(); fitCells(); });
 
 /* ---------- Boot ---------- */
 renderSheetList();

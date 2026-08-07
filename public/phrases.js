@@ -28,9 +28,34 @@ function baseFigures(key){
   if(LINEAR.has(key) || comboList(key)) return DATA.sheets[key];
   return null;                                       // plain static sheet (no phrasing)
 }
-// Curated sheets (paradiddles) carry an explicit combo list per phrase length —
-// the drummer hand-picked which figures pair, not every i,j. Keyed "2"/"4".
+// Combo sheets carry a combo list per phrase length, keyed "2"/"4". Paradiddles
+// ENUMERATE every valid combo under the drummer's rule: no run of 3+ of the same limb
+// (color) anywhere in the phrase, checked cyclically because each exercise loops on
+// itself. 1-bar (single figures) is exempt — the 10 figures are just the framework.
+// Other sheets could still ship an explicit DATA.combos[key] list instead.
+const NO3 = new Set(["paradiddle"]);   // sheets whose 2/4-bar combos are auto-generated
+function limbAt(figs, combo){          // flatten a combo (1-based figure indices) to limbs
+  const seq=[];
+  for(const n of combo) for(const tok of figs[n-1]) seq.push(tok.slice(0,2));
+  return seq;
+}
+function no3Cyclic(seq){               // false if any limb repeats 3x in a row (incl. wrap)
+  const n=seq.length;
+  for(let i=0;i<n;i++) if(seq[i]===seq[(i+1)%n] && seq[i]===seq[(i+2)%n]) return false;
+  return true;
+}
+function genCombos(key, len){          // every length-`len` figure combo that passes the rule
+  const figs=DATA.sheets[key], N=figs.length, out=[], cur=[];
+  (function rec(){
+    if(cur.length===len){ if(no3Cyclic(limbAt(figs,cur))) out.push(cur.slice()); return; }
+    for(let n=1;n<=N;n++){ cur.push(n); rec(); cur.pop(); }   // n=1..N → lexicographic order
+  })();
+  return out;
+}
+const _comboCache={};
 function comboList(key){
+  if(NO3.has(key))
+    return _comboCache[key] || (_comboCache[key]={ "2":genCombos(key,2), "4":genCombos(key,4) });
   return (typeof DATA!=="undefined" && DATA.combos && DATA.combos[key]) || null;
 }
 // Turn an ordered pair of figures (i,j) into a phrase of the current length.

@@ -55,15 +55,16 @@
   .ctlgrp{display:flex;align-items:center;gap:6px}
   .ctllbl{font-size:11px;text-transform:uppercase;letter-spacing:.6px;color:var(--dim)}
   .rows{margin-top:12px;display:flex;flex-direction:column;gap:7px}
-  .prow{display:grid;grid-template-columns:54px 1fr;align-items:center;gap:12px;
+  .prow{display:grid;grid-template-columns:54px minmax(0,1fr);align-items:center;gap:12px;
     background:var(--panel2);border:1px solid var(--line);border-radius:10px;padding:7px 10px;cursor:pointer;transition:.12s}
   .prow:hover{border-color:#3a4658}
   .prow.sel{border-color:var(--accent);background:#20283a}
   .prow.playing{border-color:var(--glow);box-shadow:0 0 14px -2px var(--glow)}
   .prow .num{color:var(--dim);font-variant-numeric:tabular-nums;font-size:13px;text-align:right}
-  .cells{display:flex;gap:10px;flex-wrap:wrap}
+  /* --cell sizes every shape; JS shrinks it in list view so a 4-bar phrase fits one line */
+  .cells{display:flex;gap:calc(var(--cell,34px)*.29);flex-wrap:nowrap}
   /* barline between figures in a multi-bar phrase */
-  .cellgap{align-self:stretch;width:0;flex:0 0 auto;border-left:2px dashed #3a4658;margin:0 6px}
+  .cellgap{align-self:stretch;width:0;flex:0 0 auto;border-left:2px dashed #3a4658;margin:0 calc(var(--cell,34px)*.18)}
 
   /* horizontal scrolling ribbon (landscape / Scroll view) — virtualized */
   .rows.scrollview{overflow-x:auto;overflow-y:hidden;padding:6px 0 10px;scrollbar-width:thin;max-width:100%}
@@ -73,16 +74,16 @@
   .rows.scrollview .prow{display:flex;flex-direction:column;align-items:flex-start;gap:6px;width:max-content}
   .rows.scrollview .prow .num{text-align:left;width:auto}
   .rows.scrollview .cells{flex-wrap:nowrap}
-  .cell{display:flex;align-items:center;justify-content:center;width:34px;height:34px;flex:0 0 auto;
+  .cell{display:flex;align-items:center;justify-content:center;width:var(--cell,34px);height:var(--cell,34px);flex:0 0 auto;
     transition:transform .05s linear; position:relative}
-  .cell i{width:26px;height:26px;display:block;background:var(--c);box-shadow:0 1px 1px rgba(0,0,0,.4)}
+  .cell i{width:calc(var(--cell,34px)*.76);height:calc(var(--cell,34px)*.76);display:block;background:var(--c);box-shadow:0 1px 1px rgba(0,0,0,.4)}
   .cell.v-snare i{border-radius:50%}
-  .cell.v-kick  i{border-radius:5px}
-  .cell.v-tom   i{background:transparent;border:4px solid var(--c);box-shadow:none}
-  .cell.v-hat   i{width:22px;height:22px;border-radius:3px;transform:rotate(45deg)}
-  .cell.v-ride  i{width:22px;height:22px;border-radius:3px;transform:rotate(45deg);background:transparent;border:3px solid var(--c);box-shadow:none}
+  .cell.v-kick  i{border-radius:calc(var(--cell,34px)*.15)}
+  .cell.v-tom   i{background:transparent;border:calc(var(--cell,34px)*.12) solid var(--c);box-shadow:none}
+  .cell.v-hat   i{width:calc(var(--cell,34px)*.65);height:calc(var(--cell,34px)*.65);border-radius:calc(var(--cell,34px)*.09);transform:rotate(45deg)}
+  .cell.v-ride  i{width:calc(var(--cell,34px)*.65);height:calc(var(--cell,34px)*.65);border-radius:calc(var(--cell,34px)*.09);transform:rotate(45deg);background:transparent;border:calc(var(--cell,34px)*.09) solid var(--c);box-shadow:none}
   .cell.v-crash i{width:0;height:0;background:transparent;box-shadow:none;
-    border-left:14px solid transparent;border-right:14px solid transparent;border-bottom:24px solid var(--c)}
+    border-left:calc(var(--cell,34px)*.41) solid transparent;border-right:calc(var(--cell,34px)*.41) solid transparent;border-bottom:calc(var(--cell,34px)*.70) solid var(--c)}
   .cell.lit{transform:scale(1.3)}
   .cell.lit i{filter:drop-shadow(0 0 8px var(--glow)) drop-shadow(0 0 3px var(--glow))}
   .cell.lit::after{content:"";position:absolute;inset:-6px;border-radius:12px;background:radial-gradient(circle,rgba(255,211,77,.35),transparent 70%)}

@@ -12,7 +12,7 @@ const read = f => fs.readFileSync(path.join(__dirname, "..", "public", f), "utf8
 // both in a shared scope and hand back the functions + a phraseBars setter.
 const M = new Function(
   read("drills.js") + "\n" + read("phrases.js") + "\n" +
-  "return {DATA, GEN, LINEAR, baseFigures, buildRows, rowLabel, rowCountFor," +
+  "return {DATA, GEN, LINEAR, baseFigures, buildRows, rowLabel, rowCountFor, comboList," +
   " setBars(v){ phraseBars = v; }};"
 )();
 
@@ -68,28 +68,46 @@ ok(eq(r4[1], figs[0].concat(figs[1], figs[1], figs[0])), "4-bar row 1,2 = arch i
 M.setBars(2);
 ok(M.rowCountFor("RHLHRFLF") === 576 && M.rowCountFor("RHLHLF") === 1296, "four-limb=576, LF=1296 at 2 bars");
 
-/* ---- paradiddles (curated-combo mode) ---- */
-const pd = DATA.sheets.paradiddle, cmb = DATA.combos.paradiddle;
+/* ---- paradiddles (generated-combo mode: every valid combo, no 3-in-a-row looped) ---- */
+const pd = DATA.sheets.paradiddle;
 ok(pd.length === 10 && pd.every(f => f.length === 4 && f.every(t => t === "RHs" || t === "LHs")),
    "paradiddle: 10 hand figures of 4 notes");
 ok(eq(pd[0], ["RHs", "LHs", "RHs", "RHs"]), "paradiddle figure 1 = R L R R (standard)");
-ok(cmb["2"].length === 45 && cmb["4"].length === 290, "curated: 45 two-figure, 290 four-figure combos");
+ok(!("combos" in DATA), "DATA.combos removed — paradiddle combos are generated at runtime");
+
+const pcomb = M.comboList("paradiddle");
+ok(pcomb["2"].length === 46 && pcomb["4"].length === 2206, "generated: 46 two-figure, 2206 four-figure combos");
 const uniq = a => new Set(a.map(c => c.join(","))).size === a.length;
-ok(uniq(cmb["2"]) && uniq(cmb["4"]), "no duplicate combos");
-ok([...cmb["2"], ...cmb["4"]].every(c => c.every(n => n >= 1 && n <= 10)), "all combo refs are figures 1..10");
+ok(uniq(pcomb["2"]) && uniq(pcomb["4"]), "no duplicate combos");
+ok([...pcomb["2"], ...pcomb["4"]].every(c => c.every(n => n >= 1 && n <= 10)), "all combo refs are figures 1..10");
+
+// the rule: flatten a combo to limbs, check no limb repeats 3x in a row, cyclically (looped)
+const limbs = combo => combo.reduce((a, n) => a.concat(pd[n - 1].map(t => t.slice(0, 2))), []);
+const no3 = seq => { const n = seq.length; for (let i = 0; i < n; i++) if (seq[i] === seq[(i+1)%n] && seq[i] === seq[(i+2)%n]) return false; return true; };
+ok(pcomb["2"].every(c => no3(limbs(c))) && pcomb["4"].every(c => no3(limbs(c))),
+   "every generated combo obeys no-3-same-limb-in-a-row (looped)");
+// and it's the COMPLETE set: independent brute-force enumeration agrees, in order
+const allValid = len => { const out = [], cur = []; (function rec(){ if (cur.length === len) { if (no3(limbs(cur))) out.push(cur.join(",")); return; } for (let n = 1; n <= 10; n++) { cur.push(n); rec(); cur.pop(); } })(); return out; };
+ok(eq(pcomb["2"].map(c => c.join(",")), allValid(2)) && pcomb["2"].length === 46, "2-bar == complete valid set (46), in order");
+ok(eq(pcomb["4"].map(c => c.join(",")), allValid(4)) && pcomb["4"].length === 2206, "4-bar == complete valid set (2206), in order");
+// spot-checks the drummer flagged
+const set2 = new Set(pcomb["2"].map(c => c.join(",")));
+ok(!set2.has("2,8"), "2,8 excluded (makes R-R-R across the loop)");
+ok(set2.has("3,3") && set2.has("10,10"), "3,3 and 10,10 now included");
 
 M.setBars(1);
-ok(M.buildRows("paradiddle").length === 10 && M.rowCountFor("paradiddle") === 10, "paradiddle 1-bar: 10 figures");
+ok(M.buildRows("paradiddle").length === 10 && M.rowCountFor("paradiddle") === 10, "paradiddle 1-bar: 10 figures (rule exempt)");
 M.setBars(2);
 const pr2 = M.buildRows("paradiddle");
-ok(pr2.length === 45 && pr2.every(x => x.length === 8), "paradiddle 2-bar: 45 curated rows x 8 cells");
-ok(M.rowCountFor("paradiddle") === 45, "paradiddle 2-bar count = 45 (curated, not 10^2)");
-ok(M.rowLabel("paradiddle", 0) === cmb["2"][0].join(","), "paradiddle 2-bar label = his notation " + cmb["2"][0].join(","));
-ok(eq(pr2[0], pd[cmb["2"][0][0] - 1].concat(pd[cmb["2"][0][1] - 1])), "paradiddle 2-bar row0 = figs[a] ++ figs[b]");
+ok(pr2.length === 46 && pr2.every(x => x.length === 8), "paradiddle 2-bar: 46 rows x 8 cells");
+ok(M.rowCountFor("paradiddle") === 46, "paradiddle 2-bar count = 46");
+ok(M.rowLabel("paradiddle", 0) === "1,4", "paradiddle 2-bar first valid combo = 1,4");
+ok(eq(pr2[0], pd[0].concat(pd[3])), "paradiddle 2-bar row0 = fig1 ++ fig4");
 M.setBars(4);
 const pr4 = M.buildRows("paradiddle");
-ok(pr4.length === 290 && pr4.every(x => x.length === 16), "paradiddle 4-bar: 290 curated rows x 16 cells");
-ok(eq(pr4[0], cmb["4"][0].reduce((a, n) => a.concat(pd[n - 1]), [])), "paradiddle 4-bar row0 = concat of its 4 figures");
+ok(pr4.length === 2206 && pr4.every(x => x.length === 16), "paradiddle 4-bar: 2206 rows x 16 cells");
+ok(M.rowLabel("paradiddle", 0) === pcomb["4"][0].join(","), "paradiddle 4-bar label = first generated combo");
+ok(eq(pr4[0], pcomb["4"][0].reduce((a, n) => a.concat(pd[n - 1]), [])), "paradiddle 4-bar row0 = concat of its 4 figures");
 
 console.log(fails ? `\n${fails} test(s) FAILED` : "\nAll tests passed");
 process.exit(fails ? 1 : 0);
