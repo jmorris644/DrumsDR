@@ -182,7 +182,7 @@ function voiceHit(voice,t,pan){
   switch(voice){
     case "snare":      return smpl("snare",t,pan);
     case "kick":       return smpl("kick",t,pan);
-    case "ghost":      return smpl("snare",t,pan,0.4);
+    case "ghost":      return smpl("snare",t,pan,0.25);   // soft ghost tap (quieter than a normal snare)
     case "lefttom":    return smpl("tom",t,pan,1,1.25);
     case "righttom":   return smpl("tom",t,pan,1,1.0);
     case "floortom":   return smpl("tom",t,pan,1,0.78);
