@@ -117,11 +117,18 @@ Colors: red = left hand, blue = right hand, orange = left foot, green = right fo
   the one exercise as an endless conveyor (mode forced to play-through), "✕ Exit focus"
   restores. Timing stays correct because the source `sheetKey` still drives `perBeat`.
 
-**Phase 3 — Interactive drum-key page**
-- New in-app screen. Per-symbol (2-symbol drills) / per-limb (linear) color+instrument
-  assignment, enforcing the matrix above, re-rendering shapes/colors AND playing the real
-  sounds. Rest = assign to a symbol → blank slot, silent, timing preserved. Ghost notes:
-  per-color + per-note (snare/hands only), soft small dot.
+**Phase 3 — Interactive drum-key page — DONE (branch only)**
+- `🥁 Drum Key` button opens `renderKit()` for the current sheet: one card per distinct
+  base symbol (`distinctSymbols`) — 2 for paradiddles/pairs, per-limb for linear. Each card
+  has a 4-color swatch picker + an instrument picker filtered by the matrix
+  (`allowedVoices`), plus a live preview. `voicing[sheetKey] = {baseToken: effToken}` is
+  applied via `revoice()` in `makeRow` (render) and the scheduler (sound), persisted to
+  `drumsdr.voicing.v1`. The full kit is playable (`voiceHit`: 3 toms = pitched tom sample,
+  2 crashes = crash sample, ghost = soft snare, open hat = synth). Rest = blank cell that
+  holds its slot (silent). All 12 cell shapes drawn in CSS (`.cell.v-*`).
+- **Deferred (Phase 3b):** marking *individual* notes as ghosts. Shipped ghost as a
+  per-part/per-color instrument (assign "Ghost" to a symbol); per-note tap-marking is the
+  remaining piece he asked for.
 
 Note: 2,206 four-bar rows is heavy for the non-virtualized List view (~35k DOM nodes) — may
 need list-view virtualization to stay smooth on a phone (Scroll is already virtualized).

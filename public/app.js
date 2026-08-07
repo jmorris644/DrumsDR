@@ -4,7 +4,15 @@ const LIMB = {
   RF:{name:"Right foot", color:"#33b158", pan: 0.25, shape:"kick"},
   LF:{name:"Left foot",  color:"#f0883e", pan:-0.25, shape:"kick"},
 };
-const VOICE = {s:"snare", k:"kick", t:"tom", h:"hat", r:"ride", c:"crash"};
+// token voice code -> voice name (name matches shapeSVG cases + .cell.v-<name> CSS).
+// Base drills use only s/k; the rest are reachable via the Drum Key re-voicing page.
+const VOICE = {
+  s:"snare", k:"kick",
+  lt:"lefttom", rt:"righttom", ft:"floortom",
+  ch:"closedhat", oh:"openhat", rd:"ride",
+  lc:"leftcrash", rc:"rightcrash",
+  g:"ghost", x:"rest"
+};
 
 /* ---------- SVG shapes (match PDFs/drumkey.pdf) ----------
    Full kit: snare ● kick ■ left tom ◉ right tom ◎ floor tom ○ closed hat ◆ open hat ◇
@@ -89,9 +97,10 @@ function loadSamples(){
     }catch(e){}
   }
 }
-function playBuf(voice,t,pan){
+function playBuf(voice,t,pan,mult=1,rate=1){
   const src=ctx.createBufferSource(); src.buffer=BUFFERS[voice];
-  const g=ctx.createGain(); g.gain.value=(VLEVEL[voice]||0.85)*(0.9+Math.random()*0.12);
+  if(rate!==1) src.playbackRate.value=rate;              // pitch the tom sample per drum
+  const g=ctx.createGain(); g.gain.value=(VLEVEL[voice]||0.85)*(0.9+Math.random()*0.12)*mult;
   const p=ctx.createStereoPanner(); p.pan.value=pan;
   src.connect(g); g.connect(p); p.connect(master); src.start(t);
 }
@@ -110,15 +119,15 @@ function kick(t,pan=0){
   cg.gain.setValueAtTime(0.5,t); cg.gain.exponentialRampToValueAtTime(0.001,t+0.03);
   c.connect(cf); cf.connect(cg); cg.connect(out); c.start(t); c.stop(t+0.04);
 }
-function snare(t,pan=0){
+function snare(t,pan=0,gain=1){
   const out=panner(pan);
   const nz=noise(), nf=ctx.createBiquadFilter(), ng=ctx.createGain();
   nf.type="highpass"; nf.frequency.value=1400;
-  ng.gain.setValueAtTime(0.85,t); ng.gain.exponentialRampToValueAtTime(0.001,t+0.19);
+  ng.gain.setValueAtTime(0.85*gain,t); ng.gain.exponentialRampToValueAtTime(0.001,t+0.19);
   nz.connect(nf); nf.connect(ng); ng.connect(out); nz.start(t); nz.stop(t+0.2);
   const o=ctx.createOscillator(), g=ctx.createGain();
   o.type="triangle"; o.frequency.setValueAtTime(190,t); o.frequency.exponentialRampToValueAtTime(120,t+0.1);
-  g.gain.setValueAtTime(0.5,t); g.gain.exponentialRampToValueAtTime(0.001,t+0.14);
+  g.gain.setValueAtTime(0.5*gain,t); g.gain.exponentialRampToValueAtTime(0.001,t+0.14);
   o.connect(g); g.connect(out); o.start(t); o.stop(t+0.16);
 }
 function tom(t,pan=0,f=180){
@@ -140,16 +149,49 @@ function crash(t,pan=0){
   g.gain.setValueAtTime(0.5,t); g.gain.exponentialRampToValueAtTime(0.001,t+0.9);
   nz.connect(f); f.connect(g); g.connect(out); nz.start(t); nz.stop(t+1.0);
 }
-function voiceHit(voice,t,pan){
-  if(BUFFERS[voice]) return playBuf(voice,t,pan);   // realistic sample if loaded
-  switch(voice){                                     // synth fallback
+function ride(t,pan=0){                               // metallic ping (synth fallback for ride)
+  const out=panner(pan);
+  [[3000,0.10],[4700,0.07]].forEach(([f,g])=>{
+    const o=ctx.createOscillator(), gn=ctx.createGain();
+    o.type="square"; o.frequency.value=f;
+    gn.gain.setValueAtTime(g,t); gn.gain.exponentialRampToValueAtTime(0.001,t+0.5);
+    o.connect(gn); gn.connect(out); o.start(t); o.stop(t+0.52);
+  });
+  const nz=noise(), f=ctx.createBiquadFilter(), g=ctx.createGain();
+  f.type="highpass"; f.frequency.value=6000;
+  g.gain.setValueAtTime(0.10,t); g.gain.exponentialRampToValueAtTime(0.001,t+0.35);
+  nz.connect(f); f.connect(g); g.connect(out); nz.start(t); nz.stop(t+0.37);
+}
+// play sample `name` (pitched/scaled) if decoded, else a synth fallback
+function smpl(name,t,pan,mult=1,rate=1){
+  if(BUFFERS[name]) return playBuf(name,t,pan,mult,rate);
+  switch(name){
     case "kick": return kick(t,pan);
-    case "snare":return snare(t,pan);
-    case "tom":  return tom(t,pan);
+    case "snare":return snare(t,pan,mult);
+    case "tom":  return tom(t,pan,180*rate);
     case "hat":  return hat(t,pan,false);
-    case "ride": return hat(t,pan,true);
+    case "ride": return ride(t,pan);
     case "crash":return crash(t,pan);
-    default: return snare(t,pan);
+    default:     return snare(t,pan,mult);
+  }
+}
+// map a voice name to a real kit sound. 3 toms = the tom sample pitched; 2 crashes = the
+// crash sample (pan comes from the limb); ghost = a soft snare; open hat = synth sustain.
+function voiceHit(voice,t,pan){
+  if(voice==="rest") return;                          // silence, holds the slot
+  switch(voice){
+    case "snare":      return smpl("snare",t,pan);
+    case "kick":       return smpl("kick",t,pan);
+    case "ghost":      return smpl("snare",t,pan,0.4);
+    case "lefttom":    return smpl("tom",t,pan,1,1.25);
+    case "righttom":   return smpl("tom",t,pan,1,1.0);
+    case "floortom":   return smpl("tom",t,pan,1,0.78);
+    case "closedhat":  return smpl("hat",t,pan);
+    case "openhat":    return hat(t,pan,true);
+    case "ride":       return smpl("ride",t,pan);
+    case "leftcrash":  return smpl("crash",t,pan);
+    case "rightcrash": return smpl("crash",t,pan);
+    default:           return smpl("snare",t,pan);
   }
 }
 function click(t,accent){
@@ -194,6 +236,27 @@ function updateFavCount(){
   const tg=b.querySelector(".tg"); if(tg) tg.textContent="Saved · "+favs.length+(favs.length===1?" line":" lines");
 }
 
+/* ---------- Voicing / Drum Key (re-voice a drill's symbols) ----------
+   voicing[sheetKey] = { baseToken: effectiveToken }. Absent = identity. Persisted so a
+   configured kit survives a reload. Instrument rules (the drummer's matrix):
+   kick = feet only · snare/toms/ride/crashes = hands only · hi-hats = any · ghost = hands+snare. */
+const VOICING_KEY="drumsdr.voicing.v1";
+let voicing=loadVoicing();
+let kitView=false;
+function loadVoicing(){ try{ const j=JSON.parse(localStorage.getItem(VOICING_KEY)); return (j&&j.map)?j.map:{}; }catch(e){ return {}; } }
+function saveVoicing(){ try{ localStorage.setItem(VOICING_KEY, JSON.stringify({v:1,map:voicing})); }catch(e){} }
+function revoice(token){ const m=voicing[sheetKey]; return (m&&m[token])||token; }   // effective token
+function isHand(limb){ return limb==="RH"||limb==="LH"; }
+const HAND_VOICES=[["s","Snare"],["lt","Left tom"],["rt","Right tom"],["ft","Floor tom"],["rd","Ride"],["lc","Left crash"],["rc","Right crash"],["ch","Closed hi-hat"],["oh","Open hi-hat"],["g","Ghost"],["x","Rest"]];
+const FOOT_VOICES=[["k","Kick"],["ch","Closed hi-hat"],["oh","Open hi-hat"],["x","Rest"]];
+function allowedVoices(limb){ return isHand(limb)?HAND_VOICES:FOOT_VOICES; }
+function distinctSymbols(key){                  // the base tokens a sheet uses, first-seen order
+  const figs=baseFigures(key); if(!figs) return [];
+  const seen=new Set(), out=[];
+  figs.forEach(f=>f.forEach(t=>{ if(!seen.has(t)){ seen.add(t); out.push(t); } }));
+  return out;
+}
+
 // scheduler
 let curRow=0, curStep=0, nextTime=0, beatCount=0;
 let countdown=0;               // remaining count-in clicks
@@ -218,7 +281,7 @@ function makeRow(i){
   const cells=document.createElement("div"); cells.className="cells"; const cs=[];
   row.forEach((tok,idx)=>{
     if(idx>0 && idx%4===0){ const g=document.createElement("div"); g.className="cellgap"; cells.appendChild(g); }
-    const c=cellNode(tok); cells.appendChild(c); cs.push(c);
+    const c=cellNode(revoice(tok)); cells.appendChild(c); cs.push(c);   // apply the sheet's voicing
   });
   pr.appendChild(num); pr.appendChild(cells);
   if(!scrollView && !isolate) pr.appendChild(favBtn(i));   // heart on list rows
@@ -245,6 +308,7 @@ function favBtn(i){
 }
 function renderSheet(){
   if(favView){ renderFavorites(); return; }
+  if(kitView){ renderKit(); return; }
   if(!isolate) rows=buildRows(sheetKey);         // isolate keeps its own copies array
   const m=DATA.meta[sheetKey], gen=!!GEN[sheetKey], phrasable=!!baseFigures(sheetKey);
   document.getElementById("sheetName").textContent=isolate?("Focus · "+isoLabel):m.name;
@@ -254,6 +318,7 @@ function renderSheet(){
   document.getElementById("subdivWrap").style.display=(!isolate&&gen)?"flex":"none";         // 8th/16th: two-symbol drills only
   const vw=document.getElementById("viewWrap"); if(vw) vw.style.display=isolate?"none":"flex";
   const ie=document.getElementById("isoExit"); if(ie) ie.style.display=isolate?"inline-flex":"none";
+  const kb=document.getElementById("kitBtn"); if(kb){ kb.style.display=isolate?"none":"inline-flex"; kb.textContent="🥁 Drum Key"; kb.classList.toggle("on", !!voicing[sheetKey]); }
   selRow=Math.max(0,Math.min(selRow,rows.length-1));
   const host=document.getElementById("rows");
   host.classList.toggle("scrollview",scrollView);
@@ -308,6 +373,7 @@ function renderFavorites(){
   document.getElementById("subdivWrap").style.display="none";
   const vw=document.getElementById("viewWrap"); if(vw) vw.style.display="none";
   const ie=document.getElementById("isoExit"); if(ie) ie.style.display="none";
+  const kb=document.getElementById("kitBtn"); if(kb) kb.style.display="none";
   const host=document.getElementById("rows");
   host.classList.remove("scrollview","virt");
   host.style.height=""; host.scrollLeft=0; host.scrollTop=0; host.style.removeProperty("--cell");
@@ -375,6 +441,80 @@ function exitIsolate(){
   rows=buildRows(sheetKey);
   selRow=Math.min(back.selRow, rows.length-1); curRow=selRow; curStep=0;
   renderSheet();
+}
+
+/* ---------- Drum Key page: re-voice the current drill ---------- */
+function openKit(){ kitView=true; renderSheet(); }
+function closeKit(){ kitView=false; renderSheet(); }
+function setEff(bt,token){               // set/clear a symbol's effective (limb+voice)
+  if(!voicing[sheetKey]) voicing[sheetKey]={};
+  if(token===bt) delete voicing[sheetKey][bt]; else voicing[sheetKey][bt]=token;
+  if(voicing[sheetKey] && !Object.keys(voicing[sheetKey]).length) delete voicing[sheetKey];
+  saveVoicing();
+}
+function setKitLimb(bt,limb){
+  let vcode=revoice(bt).slice(2);
+  if(!allowedVoices(limb).some(v=>v[0]===vcode)) vcode=isHand(limb)?"s":"k";   // keep the pair legal
+  setEff(bt, limb+vcode); renderKit();
+}
+function setKitVoice(bt,code){ setEff(bt, revoice(bt).slice(0,2)+code); renderKit(); }
+function kitCard(bt){
+  const eff=revoice(bt), limb=eff.slice(0,2), vcode=eff.slice(2);
+  const card=document.createElement("div"); card.className="kitcard";
+  const head=document.createElement("div"); head.className="kithead";
+  head.innerHTML=`<span class="kitorig">${LIMB[bt.slice(0,2)].name} · ${VOICE[bt.slice(2)]}</span>`+
+                 `<span class="kitarrow">→</span>`+
+                 `<span class="kitnow">${LIMB[limb].name} · ${VOICE[vcode]}</span>`;
+  card.appendChild(head);
+  const colors=document.createElement("div"); colors.className="kitcolors";
+  ["RH","LH","RF","LF"].forEach(l=>{
+    const b=document.createElement("button"); b.type="button"; b.className="swatch"+(l===limb?" on":"");
+    b.style.background=LIMB[l].color; b.title=LIMB[l].name;
+    b.addEventListener("click",()=>setKitLimb(bt,l));
+    colors.appendChild(b);
+  });
+  card.appendChild(colors);
+  const inst=document.createElement("div"); inst.className="kitinst";
+  allowedVoices(limb).forEach(([code,name])=>{
+    const b=document.createElement("button"); b.type="button"; b.className="ishape"+(code===vcode?" on":""); b.title=name;
+    const sv=shapeSVG(VOICE[code], LIMB[limb].color);
+    b.innerHTML = sv ? `<svg viewBox="0 0 32 32" width="22" height="22">${sv}</svg>` : `<span class="restlbl">rest</span>`;
+    b.addEventListener("click",()=>setKitVoice(bt,code));
+    inst.appendChild(b);
+  });
+  card.appendChild(inst);
+  return card;
+}
+function renderKit(){
+  const m=DATA.meta[sheetKey];
+  document.getElementById("sheetName").textContent="🥁 Drum Key — "+m.name;
+  document.getElementById("sheetDesc").textContent="Pick a color (limb) and an instrument for each part. It re-voices this drill and plays the real sounds. Press ▶ to hear it.";
+  document.getElementById("rowCount").textContent="";
+  document.getElementById("phraseWrap").style.display="none";
+  document.getElementById("subdivWrap").style.display="none";
+  const vw=document.getElementById("viewWrap"); if(vw) vw.style.display="none";
+  const ie=document.getElementById("isoExit"); if(ie) ie.style.display="none";
+  const kb=document.getElementById("kitBtn"); if(kb){ kb.style.display="inline-flex"; kb.textContent="✓ Done"; kb.classList.add("on"); }
+  const host=document.getElementById("rows");
+  host.classList.remove("scrollview","virt");
+  host.style.height=""; host.scrollLeft=0; host.scrollTop=0; host.style.removeProperty("--cell");
+  host.innerHTML=""; rowElByIndex.clear(); litCell=null; litRow=null; vspacer=null;
+  const wrap=document.createElement("div"); wrap.className="kit"; host.appendChild(wrap);
+  // live preview of the selected exercise, re-voiced
+  const prow=rows[selRow]||rows[0]||[];
+  host.style.setProperty("--cell", cellSizeFor(prow.length||8, 48).toFixed(2)+"px");
+  const prev=document.createElement("div"); prev.className="kitprev";
+  prev.innerHTML=`<div class="kitprevlbl">Preview · ${isolate?isoLabel:rowLabel(sheetKey,selRow)}</div>`;
+  const pcells=document.createElement("div"); pcells.className="cells";
+  prow.forEach((tok,idx)=>{ if(idx>0&&idx%4===0){ const g=document.createElement("div"); g.className="cellgap"; pcells.appendChild(g); } pcells.appendChild(cellNode(revoice(tok))); });
+  prev.appendChild(pcells); wrap.appendChild(prev);
+  // one card per distinct symbol
+  distinctSymbols(sheetKey).forEach(bt=>wrap.appendChild(kitCard(bt)));
+  // reset
+  const foot=document.createElement("div"); foot.className="kitfoot";
+  const reset=document.createElement("button"); reset.type="button"; reset.className="ctl kitreset"; reset.textContent="↺ Reset to default";
+  reset.addEventListener("click",()=>{ delete voicing[sheetKey]; saveVoicing(); renderKit(); });
+  foot.appendChild(reset); wrap.appendChild(foot);
 }
 function ensureMounted(center){          // keep only [center-WIN_BACK, center+WIN_FWD) mounted
   const host=document.getElementById("rows");
@@ -497,8 +637,8 @@ function scheduleStep(){
   if(beatStart && document.getElementById("metro").checked){
     click(nextTime, beatCount%4===0);
   }
-  // the hit
-  const tok=row[curStep]; const limb=tok.slice(0,2); const voice=VOICE[tok.slice(2)]||"snare";
+  // the hit (re-voiced per the Drum Key page, if any)
+  const tok=revoice(row[curStep]); const limb=tok.slice(0,2); const voice=VOICE[tok.slice(2)]||"snare";
   voiceHit(voice,nextTime,LIMB[limb].pan);
   visQ.push({row:curRow,step:curStep,t:nextTime, beat: beatStart?1:undefined});
 
@@ -539,6 +679,7 @@ function stop(){ pause(); curRow= mode==="row"?selRow:0; curStep=0; visQ=[]; }
 document.getElementById("playBtn").addEventListener("click",()=> playing?pause():start());
 document.getElementById("stopBtn").addEventListener("click",stop);
 document.getElementById("isoExit").addEventListener("click",exitIsolate);
+document.getElementById("kitBtn").addEventListener("click",()=> kitView?closeKit():openKit());
 const bpmEl=document.getElementById("bpm"), bpmVal=document.getElementById("bpmVal");
 bpmEl.addEventListener("input",()=>{ bpm=+bpmEl.value; bpmVal.textContent=bpm; });
 document.getElementById("vol").addEventListener("input",e=>{ if(master) master.gain.value=e.target.value/100; });

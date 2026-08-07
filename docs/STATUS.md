@@ -21,6 +21,18 @@ source specs are in `drummer-feedback-2026-07.md`.
 
 ## Recently delivered
 
+- **Round 2, Phase 3 (Aug 2026) — the interactive Drum Key:**
+  - A **🥁 Drum Key** button on any drill opens a re-voicing page. For each part of the
+    drill (the two hands of a paradiddle, or each limb of a linear set) you pick a **color
+    (limb)** and an **instrument**; the drill re-renders in those shapes/colors **and plays
+    the real sounds**. E.g. a hand paradiddle → green/orange **squares** = the feet on kick.
+  - Instrument rules enforced per the drummer's matrix: kick = feet only; snare/toms/ride/
+    crashes = hands only; hi-hats = any limb; ghost = hands + snare only.
+  - The full kit is playable now: snare, kick, three toms, closed/open hi-hat, ride, two
+    crashes, plus **ghost notes** (soft small dot) and **rests** (blank that holds its slot).
+  - Voicing is saved per drill (on this device) and shown by a highlighted Drum Key button.
+  - *Not yet:* marking **individual** notes as ghosts (currently ghost applies to a whole
+    part/color) — flagged for a follow-up.
 - **Round 2, Phase 2 (Aug 2026):**
   - **Favorites (♥).** Every line in List view has a heart; tap it to save the line to a
     **★ Favorites** folder at the top of the drills list. Saved **on this device**
@@ -77,10 +89,8 @@ source specs are in `drummer-feedback-2026-07.md`.
 
 ## Not built yet
 
-- **Round 2, Phase 3:** the interactive **drum-key page** — assign a color (limb) +
-  instrument per symbol/limb (enforcing the drummer's instrument rules), re-render and play
-  the real sounds; rests (blank, holds the slot) and ghost notes (snare, hands only).
-  See `drummer-feedback-2026-08.md`.
+- **Per-note ghost marking** — Phase 3 shipped ghost as a per-part/per-color instrument;
+  tapping *individual* notes to ghost them is the remaining piece.
 - The **daily-text paradiddle subscription campaign** — on hold. It's a separate backend
   product (SMS provider + billing). The cleaned paradiddle combo data now in the app is the
   content it would reuse. Long-lead item when we start: Twilio A2P 10DLC registration; also
