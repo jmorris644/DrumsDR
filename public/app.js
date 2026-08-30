@@ -197,7 +197,7 @@ function voiceHit(voice,t,pan){
 function click(t,accent){
   const out=panner(0); const o=ctx.createOscillator(), g=ctx.createGain();
   o.type="square"; o.frequency.value=accent?1600:1000;
-  g.gain.setValueAtTime(accent?0.55:0.38,t); g.gain.exponentialRampToValueAtTime(0.001,t+0.04);
+  g.gain.setValueAtTime(accent?0.35:0.22,t); g.gain.exponentialRampToValueAtTime(0.001,t+0.04);
   o.connect(g); g.connect(out); o.start(t); o.stop(t+0.05);
 }
 
