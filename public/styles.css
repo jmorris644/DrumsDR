@@ -108,10 +108,19 @@
 
   /* Drum Key (re-voicing) page */
   .kitbtn.on{border-color:var(--accent);color:var(--accent)}
-  .kit{display:flex;flex-direction:column;gap:12px;padding:2px}
+  .kit{display:flex;flex-direction:column;gap:12px;padding:2px;position:relative}
   .kitprev{background:var(--panel2);border:1px solid var(--line);border-radius:10px;padding:10px 12px}
   .kitprevlbl{font-size:11px;text-transform:uppercase;letter-spacing:.6px;color:var(--dim);margin-bottom:8px}
+  .kitsvg{background:var(--panel2);border:1px solid var(--line);border-radius:10px;padding:20px;display:flex;justify-content:center;align-items:center;min-height:300px}
+  .kitsvg svg{max-width:100%;height:auto}
+  .kitsvg g:hover circle,.kitsvg g:hover path{opacity:0.85;filter:brightness(1.2)}
   .kitcard{background:var(--panel2);border:1px solid var(--line);border-radius:10px;padding:10px 12px;display:flex;flex-direction:column;gap:9px}
+  .kitmodal{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);z-index:100;max-width:400px;width:90%;
+    background:var(--panel);border:2px solid var(--accent);box-shadow:0 8px 32px rgba(0,0,0,0.6);animation:popIn .15s ease-out}
+  @keyframes popIn{from{opacity:0;transform:translate(-50%,-50%) scale(0.9)} to{opacity:1;transform:translate(-50%,-50%) scale(1)}}
+  .kitclose{position:absolute;top:8px;right:8px;background:transparent;border:0;color:var(--dim);font-size:20px;
+    line-height:1;cursor:pointer;padding:4px 8px;border-radius:6px}
+  .kitclose:hover{background:#ffffff10;color:var(--ink)}
   .kithead{font-size:12px;color:var(--dim);display:flex;align-items:center;gap:8px;flex-wrap:wrap}
   .kithead .kitnow{color:var(--ink);font-weight:600}
   .kithead .kitarrow{opacity:.6}

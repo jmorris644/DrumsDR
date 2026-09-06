@@ -444,8 +444,9 @@ function exitIsolate(){
 }
 
 /* ---------- Drum Key page: re-voice the current drill ---------- */
-function openKit(){ kitView=true; renderSheet(); }
-function closeKit(){ kitView=false; renderSheet(); }
+let kitModal=null;   // current base-token being edited
+function openKit(){ kitView=true; kitModal=null; renderSheet(); }
+function closeKit(){ kitView=false; kitModal=null; renderSheet(); }
 function setEff(bt,token){               // set/clear a symbol's effective (limb+voice)
   if(!voicing[sheetKey]) voicing[sheetKey]={};
   if(token===bt) delete voicing[sheetKey][bt]; else voicing[sheetKey][bt]=token;
@@ -485,10 +486,66 @@ function kitCard(bt){
   card.appendChild(inst);
   return card;
 }
+// Bird's-eye drum kit mapping: instrument voice code -> {cx, cy, r} (center x/y, radius)
+const DRUM_POSITIONS={
+  snare:      {cx:200,cy:200,r:30},
+  lefttom:    {cx:150,cy:130,r:24},
+  righttom:   {cx:250,cy:130,r:24},
+  floortom:   {cx:280,cy:220,r:26},
+  kick:       {cx:200,cy:270,r:34},
+  closedhat:  {cx:120,cy:200,r:18},
+  openhat:    {cx:120,cy:200,r:18},
+  ride:       {cx:310,cy:150,r:22},
+  leftcrash:  {cx:100,cy:90,r:20},
+  rightcrash: {cx:300,cy:90,r:20},
+  ghost:      {cx:200,cy:200,r:30},   // same as snare
+  rest:       {cx:200,cy:200,r:30},   // same as snare
+};
+function limbsForVoice(v){
+  const bs=distinctSymbols(sheetKey);
+  const limbs=[];
+  bs.forEach(bt=>{
+    const eff=revoice(bt); const effVoice=VOICE[eff.slice(2)]||"snare";
+    if(effVoice===v || (v==="closedhat"&&effVoice==="openhat") || (v==="snare"&&(effVoice==="ghost"||effVoice==="rest"))){
+      const lm=eff.slice(0,2); if(!limbs.includes(lm)) limbs.push(lm);
+    }
+  });
+  return limbs;
+}
+function drumCircle(v){
+  const pos=DRUM_POSITIONS[v]; if(!pos) return "";
+  const limbs=limbsForVoice(v);
+  if(limbs.length===0) return `<circle cx="${pos.cx}" cy="${pos.cy}" r="${pos.r}" fill="#1c2230" stroke="#55647d" stroke-width="2" opacity="0.5"/>`;
+  if(limbs.length===1) return `<circle cx="${pos.cx}" cy="${pos.cy}" r="${pos.r}" fill="${LIMB[limbs[0]].color}" stroke="#fff" stroke-width="2"/>`;
+  // split in half vertically for two limbs
+  if(limbs.length===2){
+    const c1=LIMB[limbs[0]].color, c2=LIMB[limbs[1]].color;
+    const clipid=`clip-${v}-${Date.now()}`;
+    return `<clipPath id="${clipid}-left"><rect x="${pos.cx-pos.r}" y="${pos.cy-pos.r}" width="${pos.r}" height="${pos.r*2}"/></clipPath><clipPath id="${clipid}-right"><rect x="${pos.cx}" y="${pos.cy-pos.r}" width="${pos.r}" height="${pos.r*2}"/></clipPath>`+
+      `<circle cx="${pos.cx}" cy="${pos.cy}" r="${pos.r}" fill="${c1}" clip-path="url(#${clipid}-left)"/>`+
+      `<circle cx="${pos.cx}" cy="${pos.cy}" r="${pos.r}" fill="${c2}" clip-path="url(#${clipid}-right)"/>`+
+      `<circle cx="${pos.cx}" cy="${pos.cy}" r="${pos.r}" fill="none" stroke="#fff" stroke-width="2"/>`;
+  }
+  // 3+ limbs: show as a multi-color stripe pattern
+  const colors=limbs.map(l=>LIMB[l].color);
+  const seg=360/colors.length;
+  let path="";
+  colors.forEach((c,i)=>{
+    const a1=(i*seg-90)*Math.PI/180, a2=((i+1)*seg-90)*Math.PI/180;
+    const x1=pos.cx+pos.r*Math.cos(a1), y1=pos.cy+pos.r*Math.sin(a1);
+    const x2=pos.cx+pos.r*Math.cos(a2), y2=pos.cy+pos.r*Math.sin(a2);
+    path+=`<path d="M${pos.cx},${pos.cy} L${x1},${y1} A${pos.r},${pos.r} 0 0,1 ${x2},${y2} Z" fill="${c}"/>`;
+  });
+  return path+`<circle cx="${pos.cx}" cy="${pos.cy}" r="${pos.r}" fill="none" stroke="#fff" stroke-width="2"/>`;
+}
+function drumLabel(v,label){
+  const pos=DRUM_POSITIONS[v]; if(!pos) return "";
+  return `<text x="${pos.cx}" y="${pos.cy+pos.r+14}" text-anchor="middle" font-size="11" fill="#8b98a9">${label}</text>`;
+}
 function renderKit(){
   const m=DATA.meta[sheetKey];
   document.getElementById("sheetName").textContent="🥁 Drum Key — "+m.name;
-  document.getElementById("sheetDesc").textContent="Pick a color (limb) and an instrument for each part. It re-voices this drill and plays the real sounds. Press ▶ to hear it.";
+  document.getElementById("sheetDesc").textContent=kitModal?"Tap a color (limb) and instrument shape to assign.":"Tap any drum to change its assignment.";
   document.getElementById("rowCount").textContent="";
   document.getElementById("phraseWrap").style.display="none";
   document.getElementById("subdivWrap").style.display="none";
@@ -508,12 +565,51 @@ function renderKit(){
   const pcells=document.createElement("div"); pcells.className="cells";
   prow.forEach((tok,idx)=>{ if(idx>0&&idx%4===0){ const g=document.createElement("div"); g.className="cellgap"; pcells.appendChild(g); } pcells.appendChild(cellNode(revoice(tok))); });
   prev.appendChild(pcells); wrap.appendChild(prev);
-  // one card per distinct symbol
-  distinctSymbols(sheetKey).forEach(bt=>wrap.appendChild(kitCard(bt)));
+
+  // bird's-eye drum kit view
+  const kitsvg=document.createElement("div"); kitsvg.className="kitsvg";
+  const svg=document.createElementNS("http://www.w3.org/2000/svg","svg");
+  svg.setAttribute("viewBox","0 0 400 340"); svg.setAttribute("width","100%"); svg.setAttribute("height","100%");
+  // defs for clip paths
+  const defs=document.createElementNS("http://www.w3.org/2000/svg","defs");
+  svg.appendChild(defs);
+  const drums=["leftcrash","lefttom","righttom","ride","rightcrash","closedhat","snare","floortom","kick"];
+  const labels={"leftcrash":"L Crash","lefttom":"L Tom","righttom":"R Tom","floortom":"Floor","ride":"Ride","rightcrash":"R Crash","closedhat":"Hi-Hat","snare":"Snare","kick":"Kick"};
+  drums.forEach(v=>{
+    const g=document.createElementNS("http://www.w3.org/2000/svg","g");
+    const circleHTML=drumCircle(v);
+    // extract clip paths and add to defs
+    const clipMatch=circleHTML.match(/<clipPath[^>]*>.*?<\/clipPath>/g);
+    if(clipMatch){ clipMatch.forEach(cp=>{ const el=document.createElementNS("http://www.w3.org/2000/svg","g"); el.innerHTML=cp; defs.appendChild(el.firstChild); }); }
+    const cleanHTML=circleHTML.replace(/<clipPath[^>]*>.*?<\/clipPath>/g,"");
+    g.innerHTML=cleanHTML+drumLabel(v,labels[v]);
+    g.style.cursor="pointer";
+    g.addEventListener("click",()=>{
+      const bs=distinctSymbols(sheetKey);
+      const matched=bs.filter(bt=>{
+        const eff=revoice(bt); const effVoice=VOICE[eff.slice(2)]||"snare";
+        return effVoice===v || (v==="closedhat"&&effVoice==="openhat") || (v==="snare"&&(effVoice==="ghost"||effVoice==="rest"));
+      });
+      if(matched.length>0){ kitModal=matched[0]; renderKit(); }
+    });
+    svg.appendChild(g);
+  });
+  kitsvg.appendChild(svg); wrap.appendChild(kitsvg);
+
+  // modal card if a drum is clicked
+  if(kitModal){
+    const card=kitCard(kitModal);
+    card.className="kitcard kitmodal";
+    const close=document.createElement("button"); close.type="button"; close.className="kitclose"; close.textContent="✕";
+    close.addEventListener("click",()=>{ kitModal=null; renderKit(); });
+    card.insertBefore(close, card.firstChild);
+    wrap.appendChild(card);
+  }
+
   // reset
   const foot=document.createElement("div"); foot.className="kitfoot";
   const reset=document.createElement("button"); reset.type="button"; reset.className="ctl kitreset"; reset.textContent="↺ Reset to default";
-  reset.addEventListener("click",()=>{ delete voicing[sheetKey]; saveVoicing(); renderKit(); });
+  reset.addEventListener("click",()=>{ delete voicing[sheetKey]; saveVoicing(); kitModal=null; renderKit(); });
   foot.appendChild(reset); wrap.appendChild(foot);
 }
 function ensureMounted(center){          // keep only [center-WIN_BACK, center+WIN_FWD) mounted
