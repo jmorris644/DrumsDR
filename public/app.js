@@ -444,9 +444,9 @@ function exitIsolate(){
 }
 
 /* ---------- Drum Key page: re-voice the current drill ---------- */
-let kitModal=null;   // current base-token being edited
-function openKit(){ kitView=true; kitModal=null; renderSheet(); }
-function closeKit(){ kitView=false; kitModal=null; renderSheet(); }
+let kitModal=[];   // array of base-tokens being edited (can select multiple)
+function openKit(){ kitView=true; kitModal=[]; renderSheet(); }
+function closeKit(){ kitView=false; kitModal=[]; renderSheet(); }
 function setEff(bt,token){               // set/clear a symbol's effective (limb+voice)
   if(!voicing[sheetKey]) voicing[sheetKey]={};
   if(token===bt) delete voicing[sheetKey][bt]; else voicing[sheetKey][bt]=token;
@@ -459,33 +459,76 @@ function setKitLimb(bt,limb){
   setEff(bt, limb+vcode); renderKit();
 }
 function setKitVoice(bt,code){ setEff(bt, revoice(bt).slice(0,2)+code); renderKit(); }
-function kitCard(bt){
-  const eff=revoice(bt), limb=eff.slice(0,2), vcode=eff.slice(2);
+// Apply changes to all selected drums
+function setAllKitLimbs(limb){
+  kitModal.forEach(bt => {
+    let vcode=revoice(bt).slice(2);
+    if(!allowedVoices(limb).some(v=>v[0]===vcode)) vcode=isHand(limb)?"s":"k";
+    setEff(bt, limb+vcode);
+  });
+  renderKit();
+}
+function setAllKitVoices(code){
+  kitModal.forEach(bt => setEff(bt, revoice(bt).slice(0,2)+code));
+  renderKit();
+}
+function kitCard(){
   const card=document.createElement("div"); card.className="kitcard";
+
+  // Show summary of selected drums
   const head=document.createElement("div"); head.className="kithead";
-  head.innerHTML=`<span class="kitorig">${LIMB[bt.slice(0,2)].name} · ${VOICE[bt.slice(2)]}</span>`+
-                 `<span class="kitarrow">→</span>`+
-                 `<span class="kitnow">${LIMB[limb].name} · ${VOICE[vcode]||"snare"}</span>`;
+  const count = kitModal.length;
+  if(count === 1){
+    const bt = kitModal[0];
+    const eff=revoice(bt), limb=eff.slice(0,2), vcode=eff.slice(2);
+    head.innerHTML=`<span class="kitorig">${LIMB[bt.slice(0,2)].name} · ${VOICE[bt.slice(2)]}</span>`+
+                   `<span class="kitarrow">→</span>`+
+                   `<span class="kitnow">${LIMB[limb].name} · ${VOICE[vcode]||"snare"}</span>`;
+  } else {
+    head.innerHTML=`<span class="kitnow">${count} drums selected</span>`;
+  }
   card.appendChild(head);
+
+  // Determine which limbs to show - check if ALL selected drums are kick/hat
+  const allKickOrHat = kitModal.every(bt => {
+    const originalVoice = VOICE[bt.slice(2)];
+    return originalVoice === "kick" || originalVoice === "closedhat" || originalVoice === "openhat";
+  });
+  const allOther = kitModal.every(bt => {
+    const originalVoice = VOICE[bt.slice(2)];
+    return !(originalVoice === "kick" || originalVoice === "closedhat" || originalVoice === "openhat");
+  });
+
+  // Show appropriate colors based on selection
+  let allowedLimbs = [];
+  if(allKickOrHat){
+    allowedLimbs = ["RF", "LF"];  // green and orange
+  } else if(allOther){
+    allowedLimbs = ["RH", "LH"];  // red and blue
+  } else {
+    // Mixed selection - show all colors
+    allowedLimbs = ["RH", "LH", "RF", "LF"];
+  }
+
   const colors=document.createElement("div"); colors.className="kitcolors";
-  ["RH","LH","RF","LF"].forEach(l=>{
-    const b=document.createElement("button"); b.type="button"; b.className="swatch"+(l===limb?" on":"");
+  allowedLimbs.forEach(l=>{
+    const b=document.createElement("button"); b.type="button"; b.className="swatch";
     b.style.background=LIMB[l].color; b.title=LIMB[l].name;
-    b.addEventListener("click",()=>setKitLimb(bt,l));
+    b.addEventListener("click",()=>setAllKitLimbs(l));
     colors.appendChild(b);
   });
   card.appendChild(colors);
 
-  // Add instrument shapes
-  const voices=document.createElement("div"); voices.className="kitvoices";
-  const allowed=allowedVoices(limb);
-  allowed.forEach(([v,label])=>{
-    const b=document.createElement("button"); b.type="button"; b.className="voicebtn"+(v===vcode?" on":"");
-    b.innerHTML=`<svg viewBox="0 0 32 32" width="24" height="24">${shapeSVG(VOICE[v]||"snare", v===vcode?LIMB[limb].color:"#9fb0c3")}</svg><span>${label}</span>`;
-    b.addEventListener("click",()=>setKitVoice(bt,v));
-    voices.appendChild(b);
+  // Add special symbols (ghost note and rest)
+  const symbols=document.createElement("div"); symbols.className="kitvoices";
+  const specialVoices = [["g","Ghost note"],["x","Rest"]];
+  specialVoices.forEach(([v,label])=>{
+    const b=document.createElement("button"); b.type="button"; b.className="voicebtn";
+    b.innerHTML=`<svg viewBox="0 0 32 32" width="24" height="24">${shapeSVG(VOICE[v]||"snare", "#9fb0c3")}</svg><span>${label}</span>`;
+    b.addEventListener("click",()=>setAllKitVoices(v));
+    symbols.appendChild(b);
   });
-  card.appendChild(voices);
+  card.appendChild(symbols);
 
   return card;
 }
@@ -567,7 +610,7 @@ function drumLabel(v,label){
 function renderKit(){
   const m=DATA.meta[sheetKey];
   document.getElementById("sheetName").textContent="🥁 Drum Key — "+m.name;
-  document.getElementById("sheetDesc").textContent=kitModal?"Choose a color (limb) and instrument shape. Tap the drum again to close.":"Tap any drum to change its assignment.";
+  document.getElementById("sheetDesc").textContent=kitModal.length>0?"Choose a color and symbol. Tap drums to add or remove from selection.":"Tap drums to select them. You can select multiple drums at once.";
   document.getElementById("rowCount").textContent="";
   document.getElementById("phraseWrap").style.display="none";
   document.getElementById("subdivWrap").style.display="none";
@@ -613,8 +656,15 @@ function renderKit(){
         return effVoice===v || (v==="closedhat"&&effVoice==="openhat") || (v==="snare"&&(effVoice==="ghost"||effVoice==="rest"));
       });
       if(matched.length>0){
-        // Toggle: if this drum is already selected, unselect it; otherwise select it
-        if(kitModal===matched[0]){ kitModal=null; } else { kitModal=matched[0]; }
+        // Toggle each matched drum in/out of the selection
+        matched.forEach(bt => {
+          const idx = kitModal.indexOf(bt);
+          if(idx >= 0){
+            kitModal.splice(idx, 1);  // Remove if already selected
+          } else {
+            kitModal.push(bt);  // Add if not selected
+          }
+        });
         renderKit();
       }
     });
@@ -622,9 +672,9 @@ function renderKit(){
   });
   kitsvg.appendChild(svg); wrap.appendChild(kitsvg);
 
-  // modal card - always shown when a drum is selected
-  if(kitModal){
-    const card=kitCard(kitModal);
+  // modal card - always shown when drums are selected
+  if(kitModal.length > 0){
+    const card=kitCard();
     card.className="kitcard kitmodal";
     // Add X close button
     const closeBtn=document.createElement("button");
@@ -632,7 +682,7 @@ function renderKit(){
     closeBtn.className="kitclose";
     closeBtn.textContent="✕";
     closeBtn.addEventListener("click",()=>{
-      kitModal=null;
+      kitModal=[];
       renderKit();
     });
     card.appendChild(closeBtn);
@@ -640,7 +690,7 @@ function renderKit(){
     card.addEventListener("click",(ev)=>{
       // Don't close if clicking the color swatches, voice buttons, or close button
       if(ev.target.closest(".swatch") || ev.target.closest(".voicebtn") || ev.target.closest(".kitclose")) return;
-      kitModal=null;
+      kitModal=[];
       renderKit();
     });
     wrap.appendChild(card);
@@ -649,7 +699,7 @@ function renderKit(){
   // reset
   const foot=document.createElement("div"); foot.className="kitfoot";
   const reset=document.createElement("button"); reset.type="button"; reset.className="ctl kitreset"; reset.textContent="↺ Reset to default";
-  reset.addEventListener("click",()=>{ delete voicing[sheetKey]; saveVoicing(); kitModal=null; renderKit(); });
+  reset.addEventListener("click",()=>{ delete voicing[sheetKey]; saveVoicing(); kitModal=[]; renderKit(); });
   foot.appendChild(reset); wrap.appendChild(foot);
 }
 function ensureMounted(center){          // keep only [center-WIN_BACK, center+WIN_FWD) mounted
