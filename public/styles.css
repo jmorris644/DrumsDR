@@ -37,7 +37,7 @@
   .sheet{display:block;width:100%;text-align:left;background:var(--panel2);border:1px solid var(--line);
     color:var(--ink);border-radius:10px;padding:9px 11px;margin-bottom:8px;cursor:pointer;transition:.15s}
   .sheet:hover{border-color:#3a4658;transform:translateY(-1px)}
-  .sheet.active{border-color:var(--accent);box-shadow:0 0 0 1px var(--accent) inset;background:#20283a}
+  .sheet.active{border-color:var(--accent);box-shadow:0 0 0 1px var(--accent) inset;background:var(--panel2)}
   .sheet .nm{font-weight:600;font-size:14px}
   .sheet .tg{font-size:11px;color:var(--dim);margin-top:2px}
 
