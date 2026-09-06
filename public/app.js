@@ -689,17 +689,17 @@ function renderKit(){
         return effVoice===v || (v==="closedhat"&&effVoice==="openhat") || (v==="snare"&&(effVoice==="ghost"||effVoice==="rest"));
       });
       if(matched.length>0){
-        // Check if all matched drums are currently selected
-        const allSelected = matched.every(bt => kitModal.includes(bt));
+        // Check if ANY of the matched drums are currently selected
+        const anySelected = matched.some(bt => kitModal.includes(bt));
 
-        if(allSelected){
-          // If all are selected, unselect them all
+        if(anySelected){
+          // If any are selected, remove ALL matched drums from selection
           matched.forEach(bt => {
             const idx = kitModal.indexOf(bt);
             if(idx >= 0) kitModal.splice(idx, 1);
           });
         } else {
-          // Not all selected - add all to selection
+          // None selected - add ALL matched drums to selection
           matched.forEach(bt => {
             if(!kitModal.includes(bt)) kitModal.push(bt);
           });
@@ -720,18 +720,12 @@ function renderKit(){
     closeBtn.type="button";
     closeBtn.className="kitclose";
     closeBtn.textContent="✕";
-    closeBtn.addEventListener("click",()=>{
+    closeBtn.addEventListener("click",(ev)=>{
+      ev.stopPropagation();
       kitModal=[];
       renderKit();
     });
     card.appendChild(closeBtn);
-    // close the popup when clicking anywhere in the modal
-    card.addEventListener("click",(ev)=>{
-      // Don't close if clicking the color swatches, voice buttons, or close button
-      if(ev.target.closest(".swatch") || ev.target.closest(".voicebtn") || ev.target.closest(".kitclose")) return;
-      kitModal=[];
-      renderKit();
-    });
     wrap.appendChild(card);
   }
 
