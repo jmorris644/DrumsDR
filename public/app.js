@@ -538,6 +538,23 @@ function kitCard(){
   });
   card.appendChild(symbols);
 
+  // Add reset button to revert selected drum(s) to default
+  const resetBtn=document.createElement("button");
+  resetBtn.type="button";
+  resetBtn.className="voicebtn resetbtn";
+  resetBtn.innerHTML=`<span>↺ Use default</span>`;
+  resetBtn.addEventListener("click",()=>{
+    kitModal.forEach(bt => {
+      if(!voicing[sheetKey]) return;
+      delete voicing[sheetKey][bt];
+      if(Object.keys(voicing[sheetKey]).length === 0) delete voicing[sheetKey];
+    });
+    saveVoicing();
+    kitModal=[];
+    renderKit();
+  });
+  symbols.appendChild(resetBtn);
+
   return card;
 }
 // Bird's-eye drum kit mapping: instrument voice code -> {cx, cy, r} (center x/y, radius)
