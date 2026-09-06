@@ -465,7 +465,7 @@ function kitCard(bt){
   const head=document.createElement("div"); head.className="kithead";
   head.innerHTML=`<span class="kitorig">${LIMB[bt.slice(0,2)].name} · ${VOICE[bt.slice(2)]}</span>`+
                  `<span class="kitarrow">→</span>`+
-                 `<span class="kitnow">${LIMB[limb].name}</span>`;
+                 `<span class="kitnow">${LIMB[limb].name} · ${VOICE[vcode]||"snare"}</span>`;
   card.appendChild(head);
   const colors=document.createElement("div"); colors.className="kitcolors";
   ["RH","LH","RF","LF"].forEach(l=>{
@@ -475,6 +475,18 @@ function kitCard(bt){
     colors.appendChild(b);
   });
   card.appendChild(colors);
+
+  // Add instrument shapes
+  const voices=document.createElement("div"); voices.className="kitvoices";
+  const allowed=allowedVoices(limb);
+  allowed.forEach(([v,label])=>{
+    const b=document.createElement("button"); b.type="button"; b.className="voicebtn"+(v===vcode?" on":"");
+    b.innerHTML=`<svg viewBox="0 0 32 32" width="24" height="24">${shapeSVG(VOICE[v]||"snare", v===vcode?LIMB[limb].color:"#9fb0c3")}</svg><span>${label}</span>`;
+    b.addEventListener("click",()=>setKitVoice(bt,v));
+    voices.appendChild(b);
+  });
+  card.appendChild(voices);
+
   return card;
 }
 // Bird's-eye drum kit mapping: instrument voice code -> {cx, cy, r} (center x/y, radius)
@@ -555,7 +567,7 @@ function drumLabel(v,label){
 function renderKit(){
   const m=DATA.meta[sheetKey];
   document.getElementById("sheetName").textContent="🥁 Drum Key — "+m.name;
-  document.getElementById("sheetDesc").textContent=kitModal?"Tap a color (limb) and instrument shape to assign.":"Tap any drum to change its assignment.";
+  document.getElementById("sheetDesc").textContent=kitModal?"Choose a color (limb) and instrument shape. Tap the drum again to close.":"Tap any drum to change its assignment.";
   document.getElementById("rowCount").textContent="";
   document.getElementById("phraseWrap").style.display="none";
   document.getElementById("subdivWrap").style.display="none";
@@ -600,19 +612,20 @@ function renderKit(){
         const eff=revoice(bt); const effVoice=VOICE[eff.slice(2)]||"snare";
         return effVoice===v || (v==="closedhat"&&effVoice==="openhat") || (v==="snare"&&(effVoice==="ghost"||effVoice==="rest"));
       });
-      if(matched.length>0){ kitModal=matched[0]; renderKit(); }
+      if(matched.length>0){
+        // Toggle: if this drum is already selected, unselect it; otherwise select it
+        if(kitModal===matched[0]){ kitModal=null; } else { kitModal=matched[0]; }
+        renderKit();
+      }
     });
     svg.appendChild(g);
   });
   kitsvg.appendChild(svg); wrap.appendChild(kitsvg);
 
-  // modal card if a drum is clicked
+  // modal card - always shown when a drum is selected
   if(kitModal){
     const card=kitCard(kitModal);
     card.className="kitcard kitmodal";
-    const close=document.createElement("button"); close.type="button"; close.className="kitclose"; close.textContent="✕";
-    close.addEventListener("click",()=>{ kitModal=null; renderKit(); });
-    card.insertBefore(close, card.firstChild);
     wrap.appendChild(card);
   }
 

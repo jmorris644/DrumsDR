@@ -127,6 +127,12 @@
   .kitcolors{display:flex;gap:8px}
   .swatch{width:26px;height:26px;border-radius:50%;border:2px solid transparent;cursor:pointer;padding:0}
   .swatch.on{box-shadow:0 0 0 2px var(--panel2),0 0 0 4px var(--ink)}
+  .kitvoices{display:grid;grid-template-columns:repeat(auto-fill,minmax(100px,1fr));gap:8px;margin-top:6px}
+  .voicebtn{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:8px;display:flex;flex-direction:column;align-items:center;gap:4px;cursor:pointer;transition:.12s}
+  .voicebtn:hover{border-color:#55647d}
+  .voicebtn.on{border-color:var(--accent);box-shadow:0 0 0 1px var(--accent) inset;background:#20283a}
+  .voicebtn span{font-size:10px;color:var(--dim)}
+  .voicebtn.on span{color:var(--ink)}
   .kitinst{display:flex;gap:6px;flex-wrap:wrap}
   .ishape{width:34px;height:34px;display:inline-flex;align-items:center;justify-content:center;
     background:var(--panel);border:1px solid var(--line);border-radius:8px;cursor:pointer;color:var(--dim)}
