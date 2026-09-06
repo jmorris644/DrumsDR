@@ -20,7 +20,7 @@ const VOICE = {
 function shapeSVG(voice,color){
   const c=color;
   switch(voice){
-    case "snare":     return `<circle cx="16" cy="16" r="12" fill="${c}"/>`;
+    case "snare":     return `<circle cx="16" cy="16" r="12" fill="${c}"/><text x="16" y="18" text-anchor="middle" font-size="5" fill="#fff" font-weight="bold">snare</text>`;
     case "kick":      return `<rect x="4" y="4" width="24" height="24" rx="2" fill="${c}"/>`;
     case "lefttom":   return `<path fill-rule="evenodd" fill="${c}" d="M4 16a12 12 0 1 0 24 0a12 12 0 1 0-24 0ZM12 16a4 4 0 1 0 8 0a4 4 0 1 0-8 0Z"/>`;
     case "righttom":  return `<circle cx="16" cy="16" r="11" fill="none" stroke="${c}" stroke-width="5"/>`;
