@@ -7,7 +7,7 @@
   *{box-sizing:border-box}
   html,body{margin:0;height:100%}
   body{
-    background:radial-gradient(1200px 700px at 70% -10%,#182234,#0e1116 60%);
+    background:#6b6b6b;
     color:var(--ink);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
     -webkit-font-smoothing:antialiased;
   }
