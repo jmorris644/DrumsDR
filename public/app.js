@@ -474,6 +474,10 @@ function setAllKitVoices(code){
 }
 function kitCard(){
   const card=document.createElement("div"); card.className="kitcard";
+  const isThreeLimbRF = sheetKey === "RHLHRF";
+  const isThreeLimbLF = sheetKey === "RHLHLF";
+  const isFourLimb = sheetKey === "RHLHRFLF";
+  const isThreeOrFourLimb = isThreeLimbRF || isThreeLimbLF || isFourLimb;
 
   // Show summary of selected drums
   const head=document.createElement("div"); head.className="kithead";
@@ -492,9 +496,6 @@ function kitCard(){
   // For three-limb and four-limb exercises, show the appropriate number of colors
   // For other exercises, restrict based on instrument rules
   let allowedLimbs = [];
-  const isThreeLimbRF = sheetKey === "RHLHRF";
-  const isThreeLimbLF = sheetKey === "RHLHLF";
-  const isFourLimb = sheetKey === "RHLHRFLF";
 
   if(isThreeLimbRF){
     // Three-limb with right foot: show blue, red, green (RH, LH, RF)
@@ -526,42 +527,71 @@ function kitCard(){
     }
   }
 
-  const colors=document.createElement("div"); colors.className="kitcolors";
-  allowedLimbs.forEach(l=>{
-    const b=document.createElement("button"); b.type="button"; b.className="swatch";
-    b.style.background=LIMB[l].color; b.title=LIMB[l].name;
-    b.addEventListener("click",()=>setAllKitLimbs(l));
-    colors.appendChild(b);
-  });
-  card.appendChild(colors);
-
-  // Add special symbols (ghost note and rest)
-  const symbols=document.createElement("div"); symbols.className="kitvoices";
-  const specialVoices = [["g","Ghost note"],["x","Rest"]];
-  specialVoices.forEach(([v,label])=>{
-    const b=document.createElement("button"); b.type="button"; b.className="voicebtn";
-    b.innerHTML=`<svg viewBox="0 0 32 32" width="24" height="24">${shapeSVG(VOICE[v]||"snare", "#9fb0c3")}</svg><span>${label}</span>`;
-    b.addEventListener("click",()=>setAllKitVoices(v));
-    symbols.appendChild(b);
-  });
-  card.appendChild(symbols);
-
-  // Add reset button to revert selected drum(s) to default
-  const resetBtn=document.createElement("button");
-  resetBtn.type="button";
-  resetBtn.className="voicebtn resetbtn";
-  resetBtn.innerHTML=`<span>↺ Use default</span>`;
-  resetBtn.addEventListener("click",()=>{
-    kitModal.forEach(bt => {
-      if(!voicing[sheetKey]) return;
-      delete voicing[sheetKey][bt];
-      if(Object.keys(voicing[sheetKey]).length === 0) delete voicing[sheetKey];
+  // Only show color swatches for non-three/four-limb drills
+  if(!isThreeOrFourLimb && kitModal.length > 0){
+    const colors=document.createElement("div"); colors.className="kitcolors";
+    allowedLimbs.forEach(l=>{
+      const b=document.createElement("button"); b.type="button"; b.className="swatch";
+      b.style.background=LIMB[l].color; b.title=LIMB[l].name;
+      b.addEventListener("click",()=>setAllKitLimbs(l));
+      colors.appendChild(b);
     });
-    saveVoicing();
-    kitModal=[];
-    renderKit();
-  });
-  symbols.appendChild(resetBtn);
+    card.appendChild(colors);
+  }
+
+  // Add instrument selection
+  const symbols=document.createElement("div"); symbols.className="kitvoices";
+
+  // For three/four-limb drills with selection, show full instrument list
+  if(isThreeOrFourLimb && kitModal.length > 0){
+    // Get allowed voices for selected drum(s)
+    let voices = [];
+    if(kitModal.length === 1){
+      const limb = revoice(kitModal[0]).slice(0,2);
+      voices = allowedVoices(limb);
+    } else {
+      // Multiple selection: show all instruments
+      voices = [...HAND_VOICES];
+    }
+
+    voices.forEach(([v,label])=>{
+      const b=document.createElement("button"); b.type="button"; b.className="voicebtn";
+      const voiceName = VOICE[v] || "snare";
+      b.innerHTML=`<svg viewBox="0 0 32 32" width="24" height="24">${shapeSVG(voiceName, "#9fb0c3")}</svg><span>${label}</span>`;
+      b.addEventListener("click",()=>setAllKitVoices(v));
+      symbols.appendChild(b);
+    });
+  } else if(kitModal.length > 0) {
+    // Other drills: show ghost and rest only
+    const specialVoices = [["g","Ghost note"],["x","Rest"]];
+    specialVoices.forEach(([v,label])=>{
+      const b=document.createElement("button"); b.type="button"; b.className="voicebtn";
+      b.innerHTML=`<svg viewBox="0 0 32 32" width="24" height="24">${shapeSVG(VOICE[v]||"snare", "#9fb0c3")}</svg><span>${label}</span>`;
+      b.addEventListener("click",()=>setAllKitVoices(v));
+      symbols.appendChild(b);
+    });
+  }
+
+  if(kitModal.length > 0){
+    card.appendChild(symbols);
+
+    // Add reset button to revert selected drum(s) to default
+    const resetBtn=document.createElement("button");
+    resetBtn.type="button";
+    resetBtn.className="voicebtn resetbtn";
+    resetBtn.innerHTML=`<span>↺ Use default</span>`;
+    resetBtn.addEventListener("click",()=>{
+      kitModal.forEach(bt => {
+        if(!voicing[sheetKey]) return;
+        delete voicing[sheetKey][bt];
+        if(Object.keys(voicing[sheetKey]).length === 0) delete voicing[sheetKey];
+      });
+      saveVoicing();
+      kitModal=[];
+      renderKit();
+    });
+    symbols.appendChild(resetBtn);
+  }
 
   return card;
 }
@@ -642,8 +672,29 @@ function drumLabel(v,label){
 }
 function renderKit(){
   const m=DATA.meta[sheetKey];
+  const isThreeLimbRF = sheetKey === "RHLHRF";
+  const isThreeLimbLF = sheetKey === "RHLHLF";
+  const isFourLimb = sheetKey === "RHLHRFLF";
+  const isThreeOrFourLimb = isThreeLimbRF || isThreeLimbLF || isFourLimb;
+
   document.getElementById("sheetName").textContent="🥁 Drum Key — "+m.name;
-  document.getElementById("sheetDesc").textContent=kitModal.length>0?"Choose a color and symbol. Tap drums to add or remove from selection.":"Tap drums to select them. You can select multiple drums at once.";
+
+  let descText;
+  if(kitModal.length > 0){
+    if(isThreeOrFourLimb){
+      descText = "Choose an instrument for the selected drum. Tap drums to add or remove from selection.";
+    } else {
+      descText = "Choose a color and symbol. Tap drums to add or remove from selection.";
+    }
+  } else {
+    if(isThreeOrFourLimb){
+      descText = "Tap each drum to select it, then pick an instrument. You can select drums one at a time or multiple at once.";
+    } else {
+      descText = "Tap drums to select them. You can select multiple drums at once.";
+    }
+  }
+
+  document.getElementById("sheetDesc").textContent=descText;
   document.getElementById("rowCount").textContent="";
   document.getElementById("phraseWrap").style.display="none";
   document.getElementById("subdivWrap").style.display="none";
