@@ -689,40 +689,42 @@ function renderKit(){
         return effVoice===v || (v==="closedhat"&&effVoice==="openhat") || (v==="snare"&&(effVoice==="ghost"||effVoice==="rest"));
       });
       if(matched.length>0){
-        // Check if any matched drum has been customized (not default)
-        const anyCustomized = matched.some(bt => {
-          if(!voicing[sheetKey]) return false;
-          return voicing[sheetKey][bt] !== undefined;
-        });
+        // Check if all matched drums are currently selected
+        const allSelected = matched.every(bt => kitModal.includes(bt));
 
-        if(anyCustomized){
-          // Reset all matched drums to default
+        if(allSelected){
+          // If all are selected, unselect them all
           matched.forEach(bt => {
-            if(voicing[sheetKey] && voicing[sheetKey][bt]){
-              delete voicing[sheetKey][bt];
-            }
+            const idx = kitModal.indexOf(bt);
+            if(idx >= 0) kitModal.splice(idx, 1);
           });
-          if(voicing[sheetKey] && Object.keys(voicing[sheetKey]).length === 0){
-            delete voicing[sheetKey];
-          }
-          saveVoicing();
           renderKit();
         } else {
-          // No customization - toggle selection as before
-          const anySelected = matched.some(bt => kitModal.includes(bt));
-          if(anySelected){
-            // Remove all matched drums from selection
+          // Check if any matched drum has been customized (not default)
+          const anyCustomized = matched.some(bt => {
+            if(!voicing[sheetKey]) return false;
+            return voicing[sheetKey][bt] !== undefined;
+          });
+
+          if(anyCustomized){
+            // Reset all matched drums to default
             matched.forEach(bt => {
-              const idx = kitModal.indexOf(bt);
-              if(idx >= 0) kitModal.splice(idx, 1);
+              if(voicing[sheetKey] && voicing[sheetKey][bt]){
+                delete voicing[sheetKey][bt];
+              }
             });
+            if(voicing[sheetKey] && Object.keys(voicing[sheetKey]).length === 0){
+              delete voicing[sheetKey];
+            }
+            saveVoicing();
+            renderKit();
           } else {
-            // Add all matched drums to selection
+            // No customization and not all selected - add to selection
             matched.forEach(bt => {
               if(!kitModal.includes(bt)) kitModal.push(bt);
             });
+            renderKit();
           }
-          renderKit();
         }
       }
     });
