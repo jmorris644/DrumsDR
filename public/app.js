@@ -465,7 +465,7 @@ function kitCard(bt){
   const head=document.createElement("div"); head.className="kithead";
   head.innerHTML=`<span class="kitorig">${LIMB[bt.slice(0,2)].name} · ${VOICE[bt.slice(2)]}</span>`+
                  `<span class="kitarrow">→</span>`+
-                 `<span class="kitnow">${LIMB[limb].name} · ${VOICE[vcode]}</span>`;
+                 `<span class="kitnow">${LIMB[limb].name}</span>`;
   card.appendChild(head);
   const colors=document.createElement("div"); colors.className="kitcolors";
   ["RH","LH","RF","LF"].forEach(l=>{
@@ -475,15 +475,6 @@ function kitCard(bt){
     colors.appendChild(b);
   });
   card.appendChild(colors);
-  const inst=document.createElement("div"); inst.className="kitinst";
-  allowedVoices(limb).forEach(([code,name])=>{
-    const b=document.createElement("button"); b.type="button"; b.className="ishape"+(code===vcode?" on":""); b.title=name;
-    const sv=shapeSVG(VOICE[code], LIMB[limb].color);
-    b.innerHTML = sv ? `<svg viewBox="0 0 32 32" width="22" height="22">${sv}</svg>` : `<span class="restlbl">rest</span>`;
-    b.addEventListener("click",()=>setKitVoice(bt,code));
-    inst.appendChild(b);
-  });
-  card.appendChild(inst);
   return card;
 }
 // Bird's-eye drum kit mapping: instrument voice code -> {cx, cy, r} (center x/y, radius)
@@ -515,28 +506,48 @@ function limbsForVoice(v){
 function drumCircle(v){
   const pos=DRUM_POSITIONS[v]; if(!pos) return "";
   const limbs=limbsForVoice(v);
-  if(limbs.length===0) return `<circle cx="${pos.cx}" cy="${pos.cy}" r="${pos.r}" fill="#1c2230" stroke="#55647d" stroke-width="2" opacity="0.5"/>`;
-  if(limbs.length===1) return `<circle cx="${pos.cx}" cy="${pos.cy}" r="${pos.r}" fill="${LIMB[limbs[0]].color}" stroke="#fff" stroke-width="2"/>`;
-  // split in half vertically for two limbs
-  if(limbs.length===2){
+  const shapeCode = v==="closedhat"||v==="openhat" ? "closedhat" : v;  // normalize hat variants
+  const shapeSVGContent = shapeSVG(v, "#000");  // get shape in black for outline
+
+  // base circle/shape with color fill based on limbs
+  let result = "";
+
+  if(limbs.length===0) {
+    // empty drum - just show gray outline with shape
+    result = `<g opacity="0.5"><circle cx="${pos.cx}" cy="${pos.cy}" r="${pos.r}" fill="#1c2230" stroke="#55647d" stroke-width="2"/>`;
+  } else if(limbs.length===1) {
+    // single limb - fill with that color and show shape
+    result = `<g><circle cx="${pos.cx}" cy="${pos.cy}" r="${pos.r}" fill="${LIMB[limbs[0]].color}" stroke="#fff" stroke-width="2"/>`;
+  } else if(limbs.length===2){
+    // split in half vertically for two limbs
     const c1=LIMB[limbs[0]].color, c2=LIMB[limbs[1]].color;
     const clipid=`clip-${v}-${Date.now()}`;
-    return `<clipPath id="${clipid}-left"><rect x="${pos.cx-pos.r}" y="${pos.cy-pos.r}" width="${pos.r}" height="${pos.r*2}"/></clipPath><clipPath id="${clipid}-right"><rect x="${pos.cx}" y="${pos.cy-pos.r}" width="${pos.r}" height="${pos.r*2}"/></clipPath>`+
+    result = `<g><clipPath id="${clipid}-left"><rect x="${pos.cx-pos.r}" y="${pos.cy-pos.r}" width="${pos.r}" height="${pos.r*2}"/></clipPath><clipPath id="${clipid}-right"><rect x="${pos.cx}" y="${pos.cy-pos.r}" width="${pos.r}" height="${pos.r*2}"/></clipPath>`+
       `<circle cx="${pos.cx}" cy="${pos.cy}" r="${pos.r}" fill="${c1}" clip-path="url(#${clipid}-left)"/>`+
       `<circle cx="${pos.cx}" cy="${pos.cy}" r="${pos.r}" fill="${c2}" clip-path="url(#${clipid}-right)"/>`+
       `<circle cx="${pos.cx}" cy="${pos.cy}" r="${pos.r}" fill="none" stroke="#fff" stroke-width="2"/>`;
+  } else {
+    // 3+ limbs: show as a multi-color stripe pattern
+    const colors=limbs.map(l=>LIMB[l].color);
+    const seg=360/colors.length;
+    let path="";
+    colors.forEach((c,i)=>{
+      const a1=(i*seg-90)*Math.PI/180, a2=((i+1)*seg-90)*Math.PI/180;
+      const x1=pos.cx+pos.r*Math.cos(a1), y1=pos.cy+pos.r*Math.sin(a1);
+      const x2=pos.cx+pos.r*Math.cos(a2), y2=pos.cy+pos.r*Math.sin(a2);
+      path+=`<path d="M${pos.cx},${pos.cy} L${x1},${y1} A${pos.r},${pos.r} 0 0,1 ${x2},${y2} Z" fill="${c}"/>`;
+    });
+    result = `<g>${path}<circle cx="${pos.cx}" cy="${pos.cy}" r="${pos.r}" fill="none" stroke="#fff" stroke-width="2"/>`;
   }
-  // 3+ limbs: show as a multi-color stripe pattern
-  const colors=limbs.map(l=>LIMB[l].color);
-  const seg=360/colors.length;
-  let path="";
-  colors.forEach((c,i)=>{
-    const a1=(i*seg-90)*Math.PI/180, a2=((i+1)*seg-90)*Math.PI/180;
-    const x1=pos.cx+pos.r*Math.cos(a1), y1=pos.cy+pos.r*Math.sin(a1);
-    const x2=pos.cx+pos.r*Math.cos(a2), y2=pos.cy+pos.r*Math.sin(a2);
-    path+=`<path d="M${pos.cx},${pos.cy} L${x1},${y1} A${pos.r},${pos.r} 0 0,1 ${x2},${y2} Z" fill="${c}"/>`;
-  });
-  return path+`<circle cx="${pos.cx}" cy="${pos.cy}" r="${pos.r}" fill="none" stroke="#fff" stroke-width="2"/>`;
+
+  // Add the instrument shape overlay centered on the drum
+  const shapeScale = 0.5;  // scale down the shape to fit inside the drum
+  const shapeSize = pos.r * 2 * shapeScale;
+  const shapeOffset = pos.cx - pos.r * shapeScale;
+  result += `<svg x="${shapeOffset}" y="${shapeOffset}" width="${shapeSize}" height="${shapeSize}" viewBox="0 0 32 32">${shapeSVG(v, "#fff")}</svg>`;
+  result += `</g>`;
+
+  return result;
 }
 function drumLabel(v,label){
   const pos=DRUM_POSITIONS[v]; if(!pos) return "";
