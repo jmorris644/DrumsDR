@@ -489,13 +489,21 @@ function kitCard(){
   }
   card.appendChild(head);
 
-  // For three-limb and four-limb exercises, show all colors
+  // For three-limb and four-limb exercises, show the appropriate number of colors
   // For other exercises, restrict based on instrument rules
   let allowedLimbs = [];
-  const isLinearDrill = sheetKey === "RHLHRF" || sheetKey === "RHLHLF" || sheetKey === "RHLHRFLF";
+  const isThreeLimbRF = sheetKey === "RHLHRF";
+  const isThreeLimbLF = sheetKey === "RHLHLF";
+  const isFourLimb = sheetKey === "RHLHRFLF";
 
-  if(isLinearDrill){
-    // Linear drills: show all four limbs
+  if(isThreeLimbRF){
+    // Three-limb with right foot: show blue, red, green (RH, LH, RF)
+    allowedLimbs = ["RH", "LH", "RF"];
+  } else if(isThreeLimbLF){
+    // Three-limb with left foot: show blue, red, orange (RH, LH, LF)
+    allowedLimbs = ["RH", "LH", "LF"];
+  } else if(isFourLimb){
+    // Four-limb: show all four colors
     allowedLimbs = ["RH", "LH", "RF", "LF"];
   } else {
     // Other drills: apply instrument rules
