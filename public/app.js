@@ -1,6 +1,6 @@
 const LIMB = {
-  RH:{name:"Right hand", color:"#ffffff", pan: 0.35, shape:"snare"},
-  LH:{name:"Left hand",  color:"#000000", pan:-0.35, shape:"snare"},
+  RH:{name:"Right hand", color:"#2f81f7", pan: 0.35, shape:"snare"},
+  LH:{name:"Left hand",  color:"#f0524b", pan:-0.35, shape:"snare"},
   RF:{name:"Right foot", color:"#33b158", pan: 0.25, shape:"kick"},
   LF:{name:"Left foot",  color:"#f0883e", pan:-0.25, shape:"kick"},
 };
