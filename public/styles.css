@@ -1,5 +1,5 @@
   :root{
-    --bg:#0e1116; --panel:#161b22; --panel2:#6b6b6b; --line:#2a3140;
+    --bg:#0e1116; --panel:#161b22; --panel2:#1c2230; --line:#2a3140;
     --ink:#e6edf3; --dim:#8b98a9; --accent:#e8b923;
     --RH:#2f81f7; --LH:#f0524b; --RF:#33b158; --LF:#f0883e;
     --glow:#ffd34d;
@@ -7,7 +7,7 @@
   *{box-sizing:border-box}
   html,body{margin:0;height:100%}
   body{
-    background:var(--bg);
+    background:radial-gradient(1200px 700px at 70% -10%,#182234,#0e1116 60%);
     color:var(--ink);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
     -webkit-font-smoothing:antialiased;
   }
@@ -37,7 +37,7 @@
   .sheet{display:block;width:100%;text-align:left;background:var(--panel2);border:1px solid var(--line);
     color:var(--ink);border-radius:10px;padding:9px 11px;margin-bottom:8px;cursor:pointer;transition:.15s}
   .sheet:hover{border-color:#3a4658;transform:translateY(-1px)}
-  .sheet.active{border-color:var(--accent);box-shadow:0 0 0 1px var(--accent) inset;background:var(--panel2)}
+  .sheet.active{border-color:var(--accent);box-shadow:0 0 0 1px var(--accent) inset;background:#20283a}
   .sheet .nm{font-weight:600;font-size:14px}
   .sheet .tg{font-size:11px;color:var(--dim);margin-top:2px}
 
@@ -108,31 +108,16 @@
 
   /* Drum Key (re-voicing) page */
   .kitbtn.on{border-color:var(--accent);color:var(--accent)}
-  .kit{display:flex;flex-direction:column;gap:12px;padding:2px;position:relative}
-  .kitprev{background:#1c2230;border:1px solid var(--line);border-radius:10px;padding:10px 12px}
+  .kit{display:flex;flex-direction:column;gap:12px;padding:2px}
+  .kitprev{background:var(--panel2);border:1px solid var(--line);border-radius:10px;padding:10px 12px}
   .kitprevlbl{font-size:11px;text-transform:uppercase;letter-spacing:.6px;color:var(--dim);margin-bottom:8px}
-  .kitsvg{background:#1c2230;border:1px solid var(--line);border-radius:10px;padding:20px;display:flex;justify-content:center;align-items:center;min-height:300px}
-  .kitsvg svg{max-width:100%;height:auto}
-  .kitsvg g:hover circle,.kitsvg g:hover path{opacity:0.85;filter:brightness(1.2)}
-  .kitcard{background:#1c2230;border:1px solid var(--line);border-radius:10px;padding:10px 12px;display:flex;flex-direction:column;gap:9px}
-  .kitmodal{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);z-index:100;max-width:400px;width:90%;
-    background:var(--panel);border:2px solid var(--accent);box-shadow:0 8px 32px rgba(0,0,0,0.6);animation:popIn .15s ease-out}
-  @keyframes popIn{from{opacity:0;transform:translate(-50%,-50%) scale(0.9)} to{opacity:1;transform:translate(-50%,-50%) scale(1)}}
-  .kitclose{position:absolute;top:8px;right:8px;background:transparent;border:0;color:var(--dim);font-size:20px;
-    line-height:1;cursor:pointer;padding:4px 8px;border-radius:6px}
-  .kitclose:hover{background:#ffffff10;color:var(--ink)}
+  .kitcard{background:var(--panel2);border:1px solid var(--line);border-radius:10px;padding:10px 12px;display:flex;flex-direction:column;gap:9px}
   .kithead{font-size:12px;color:var(--dim);display:flex;align-items:center;gap:8px;flex-wrap:wrap}
   .kithead .kitnow{color:var(--ink);font-weight:600}
   .kithead .kitarrow{opacity:.6}
   .kitcolors{display:flex;gap:8px}
   .swatch{width:26px;height:26px;border-radius:50%;border:2px solid transparent;cursor:pointer;padding:0}
   .swatch.on{box-shadow:0 0 0 2px var(--panel2),0 0 0 4px var(--ink)}
-  .kitvoices{display:grid;grid-template-columns:repeat(auto-fill,minmax(100px,1fr));gap:8px;margin-top:6px}
-  .voicebtn{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:8px;display:flex;flex-direction:column;align-items:center;gap:4px;cursor:pointer;transition:.12s}
-  .voicebtn:hover{border-color:#55647d}
-  .voicebtn.on{border-color:var(--accent);box-shadow:0 0 0 1px var(--accent) inset;background:#20283a}
-  .voicebtn span{font-size:10px;color:var(--dim)}
-  .voicebtn.on span{color:var(--ink)}
   .kitinst{display:flex;gap:6px;flex-wrap:wrap}
   .ishape{width:34px;height:34px;display:inline-flex;align-items:center;justify-content:center;
     background:var(--panel);border:1px solid var(--line);border-radius:8px;cursor:pointer;color:var(--dim)}
