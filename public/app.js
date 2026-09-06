@@ -506,6 +506,9 @@ function kitCard(){
   } else if(isFourLimb){
     // Four-limb: show all four colors
     allowedLimbs = ["RH", "LH", "RF", "LF"];
+  } else if(sheetKey === "rightleftsnare1.1"){
+    // 2 limb combinations: show all four colors
+    allowedLimbs = ["RH", "LH", "RF", "LF"];
   } else {
     // Other drills: apply instrument rules
     const allKickOrHat = kitModal.every(bt => {
