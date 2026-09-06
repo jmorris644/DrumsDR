@@ -489,25 +489,33 @@ function kitCard(){
   }
   card.appendChild(head);
 
-  // Determine which limbs to show - check if ALL selected drums are kick/hat
-  const allKickOrHat = kitModal.every(bt => {
-    const originalVoice = VOICE[bt.slice(2)];
-    return originalVoice === "kick" || originalVoice === "closedhat" || originalVoice === "openhat";
-  });
-  const allOther = kitModal.every(bt => {
-    const originalVoice = VOICE[bt.slice(2)];
-    return !(originalVoice === "kick" || originalVoice === "closedhat" || originalVoice === "openhat");
-  });
-
-  // Show appropriate colors based on selection
+  // For three-limb and four-limb exercises, show all colors
+  // For other exercises, restrict based on instrument rules
   let allowedLimbs = [];
-  if(allKickOrHat){
-    allowedLimbs = ["RF", "LF"];  // green and orange
-  } else if(allOther){
-    allowedLimbs = ["RH", "LH"];  // red and blue
-  } else {
-    // Mixed selection - show all colors
+  const isLinearDrill = sheetKey === "RHLHRF" || sheetKey === "RHLHLF" || sheetKey === "RHLHRFLF";
+
+  if(isLinearDrill){
+    // Linear drills: show all four limbs
     allowedLimbs = ["RH", "LH", "RF", "LF"];
+  } else {
+    // Other drills: apply instrument rules
+    const allKickOrHat = kitModal.every(bt => {
+      const originalVoice = VOICE[bt.slice(2)];
+      return originalVoice === "kick" || originalVoice === "closedhat" || originalVoice === "openhat";
+    });
+    const allOther = kitModal.every(bt => {
+      const originalVoice = VOICE[bt.slice(2)];
+      return !(originalVoice === "kick" || originalVoice === "closedhat" || originalVoice === "openhat");
+    });
+
+    if(allKickOrHat){
+      allowedLimbs = ["RF", "LF"];  // green and orange
+    } else if(allOther){
+      allowedLimbs = ["RH", "LH"];  // red and blue
+    } else {
+      // Mixed selection - show all colors
+      allowedLimbs = ["RH", "LH", "RF", "LF"];
+    }
   }
 
   const colors=document.createElement("div"); colors.className="kitcolors";
