@@ -626,6 +626,13 @@ function renderKit(){
   if(kitModal){
     const card=kitCard(kitModal);
     card.className="kitcard kitmodal";
+    // close the popup when clicking anywhere in the modal
+    card.addEventListener("click",(ev)=>{
+      // Don't close if clicking the color swatches or voice buttons
+      if(ev.target.closest(".swatch") || ev.target.closest(".voicebtn")) return;
+      kitModal=null;
+      renderKit();
+    });
     wrap.appendChild(card);
   }
 
