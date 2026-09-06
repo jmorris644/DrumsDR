@@ -681,15 +681,21 @@ function renderKit(){
         return effVoice===v || (v==="closedhat"&&effVoice==="openhat") || (v==="snare"&&(effVoice==="ghost"||effVoice==="rest"));
       });
       if(matched.length>0){
-        // Toggle each matched drum in/out of the selection
-        matched.forEach(bt => {
-          const idx = kitModal.indexOf(bt);
-          if(idx >= 0){
-            kitModal.splice(idx, 1);  // Remove if already selected
-          } else {
-            kitModal.push(bt);  // Add if not selected
-          }
-        });
+        // If any matched drum is already in the selection, remove all matched drums
+        // Otherwise, add all matched drums
+        const anySelected = matched.some(bt => kitModal.includes(bt));
+        if(anySelected){
+          // Remove all matched drums from selection
+          matched.forEach(bt => {
+            const idx = kitModal.indexOf(bt);
+            if(idx >= 0) kitModal.splice(idx, 1);
+          });
+        } else {
+          // Add all matched drums to selection
+          matched.forEach(bt => {
+            if(!kitModal.includes(bt)) kitModal.push(bt);
+          });
+        }
         renderKit();
       }
     });
