@@ -506,28 +506,33 @@ function limbsForVoice(v){
 function drumCircle(v){
   const pos=DRUM_POSITIONS[v]; if(!pos) return "";
   const limbs=limbsForVoice(v);
-  const shapeCode = v==="closedhat"||v==="openhat" ? "closedhat" : v;  // normalize hat variants
-  const shapeSVGContent = shapeSVG(v, "#000");  // get shape in black for outline
 
-  // base circle/shape with color fill based on limbs
+  // Scale factor for the shape - how much of the "radius space" to use
+  const scale = 1.8;  // makes shapes nicely sized within their area
+  const w = pos.r * 2 * scale;
+  const h = pos.r * 2 * scale;
+  const x = pos.cx - pos.r * scale;
+  const y = pos.cy - pos.r * scale;
+
   let result = "";
 
   if(limbs.length===0) {
-    // empty drum - just show gray outline with shape
-    result = `<g opacity="0.5"><circle cx="${pos.cx}" cy="${pos.cy}" r="${pos.r}" fill="#1c2230" stroke="#55647d" stroke-width="2"/>`;
+    // empty drum - show shape with gray fill
+    result = `<g opacity="0.5"><svg x="${x}" y="${y}" width="${w}" height="${h}" viewBox="0 0 32 32">${shapeSVG(v, "#55647d")}</svg></g>`;
   } else if(limbs.length===1) {
-    // single limb - fill with that color and show shape
-    result = `<g><circle cx="${pos.cx}" cy="${pos.cy}" r="${pos.r}" fill="${LIMB[limbs[0]].color}" stroke="#fff" stroke-width="2"/>`;
+    // single limb - show shape in that color
+    result = `<g><svg x="${x}" y="${y}" width="${w}" height="${h}" viewBox="0 0 32 32">${shapeSVG(v, LIMB[limbs[0]].color)}</svg></g>`;
   } else if(limbs.length===2){
     // split in half vertically for two limbs
     const c1=LIMB[limbs[0]].color, c2=LIMB[limbs[1]].color;
     const clipid=`clip-${v}-${Date.now()}`;
-    result = `<g><clipPath id="${clipid}-left"><rect x="${pos.cx-pos.r}" y="${pos.cy-pos.r}" width="${pos.r}" height="${pos.r*2}"/></clipPath><clipPath id="${clipid}-right"><rect x="${pos.cx}" y="${pos.cy-pos.r}" width="${pos.r}" height="${pos.r*2}"/></clipPath>`+
-      `<circle cx="${pos.cx}" cy="${pos.cy}" r="${pos.r}" fill="${c1}" clip-path="url(#${clipid}-left)"/>`+
-      `<circle cx="${pos.cx}" cy="${pos.cy}" r="${pos.r}" fill="${c2}" clip-path="url(#${clipid}-right)"/>`+
-      `<circle cx="${pos.cx}" cy="${pos.cy}" r="${pos.r}" fill="none" stroke="#fff" stroke-width="2"/>`;
+    result = `<g><defs><clipPath id="${clipid}-left"><rect x="0" y="0" width="16" height="32"/></clipPath><clipPath id="${clipid}-right"><rect x="16" y="0" width="16" height="32"/></clipPath></defs>`+
+      `<svg x="${x}" y="${y}" width="${w}" height="${h}" viewBox="0 0 32 32">`+
+      `<g clip-path="url(#${clipid}-left)">${shapeSVG(v, c1)}</g>`+
+      `<g clip-path="url(#${clipid}-right)">${shapeSVG(v, c2)}</g>`+
+      `</svg></g>`;
   } else {
-    // 3+ limbs: show as a multi-color stripe pattern
+    // 3+ limbs: show as a multi-color stripe pattern using a circle with pie slices, then overlay the shape
     const colors=limbs.map(l=>LIMB[l].color);
     const seg=360/colors.length;
     let path="";
@@ -537,15 +542,9 @@ function drumCircle(v){
       const x2=pos.cx+pos.r*Math.cos(a2), y2=pos.cy+pos.r*Math.sin(a2);
       path+=`<path d="M${pos.cx},${pos.cy} L${x1},${y1} A${pos.r},${pos.r} 0 0,1 ${x2},${y2} Z" fill="${c}"/>`;
     });
-    result = `<g>${path}<circle cx="${pos.cx}" cy="${pos.cy}" r="${pos.r}" fill="none" stroke="#fff" stroke-width="2"/>`;
+    result = `<g>${path}<circle cx="${pos.cx}" cy="${pos.cy}" r="${pos.r}" fill="none" stroke="#fff" stroke-width="2"/>`+
+      `<svg x="${x}" y="${y}" width="${w}" height="${h}" viewBox="0 0 32 32">${shapeSVG(v, "#fff")}</svg></g>`;
   }
-
-  // Add the instrument shape overlay centered on the drum
-  const shapeScale = 0.5;  // scale down the shape to fit inside the drum
-  const shapeSize = pos.r * 2 * shapeScale;
-  const shapeOffset = pos.cx - pos.r * shapeScale;
-  result += `<svg x="${shapeOffset}" y="${shapeOffset}" width="${shapeSize}" height="${shapeSize}" viewBox="0 0 32 32">${shapeSVG(v, "#fff")}</svg>`;
-  result += `</g>`;
 
   return result;
 }
