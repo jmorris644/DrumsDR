@@ -2,9 +2,7 @@ const LIMB = {
   RH:{name:"Right hand", color:"#2f81f7", pan: 0.35, shape:"snare"},
   LH:{name:"Left hand",  color:"#f0524b", pan:-0.35, shape:"snare"},
   RF:{name:"Right foot", color:"#33b158", pan: 0.25, shape:"kick"},
-  LF:{name:"Left foot",  color:"#f0883e", pan:-0.25, shape:"kick"},
-  BK:{name:"Black",      color:"#000000", pan: 0.0,  shape:"snare"},
-  WH:{name:"White",      color:"#ffffff", pan: 0.0,  shape:"kick"},
+  LF:{name:"Left foot",  color:"#f0883e", pan:-0.25, shape:"kick"}
 };
 // token voice code -> voice name (name matches shapeSVG cases + .cell.v-<name> CSS).
 // Base drills use only s/k; the rest are reachable via the Drum Key re-voicing page.
