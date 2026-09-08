@@ -522,13 +522,17 @@ function kitCard(){
     if(kitModal.length > 0){
       // Check the selected shapes and determine which colors are allowed
       const selectedVoices = kitModal.map(bt => VOICE[revoice(bt).slice(2)] || "snare");
-      const hasKickOrDiamond = selectedVoices.some(v => v === "kick" || v === "closedhat" || v === "openhat");
+      const hasKick = selectedVoices.some(v => v === "kick");
+      const hasDiamond = selectedVoices.some(v => v === "closedhat" || v === "openhat");
       const hasOtherShapes = selectedVoices.some(v => !(v === "kick" || v === "closedhat" || v === "openhat"));
 
-      if(hasKickOrDiamond && !hasOtherShapes){
-        // Only kick/diamond selected: all 4 colors allowed
+      if(hasKick && !hasDiamond && !hasOtherShapes){
+        // Only kick selected: green and orange only (feet)
+        allowedLimbs = ["RF", "LF"];
+      } else if(hasDiamond && !hasKick && !hasOtherShapes){
+        // Only diamond selected: all 4 colors allowed
         allowedLimbs = ["RH", "LH", "RF", "LF"];
-      } else if(!hasKickOrDiamond && hasOtherShapes){
+      } else if(!hasKick && !hasDiamond && hasOtherShapes){
         // Only snare/other shapes: red and blue only
         allowedLimbs = ["RH", "LH"];
       } else {
@@ -755,7 +759,7 @@ function renderKit(){
     if(isThreeOrFourLimb){
       descText = "Choose an instrument for the selected drum. Tap drums to add or remove from selection.";
     } else if(sheetKey === "rightleftsnare1.1"){
-      descText = "Choose a color and instrument shape (up to 2 shapes). Green/orange for diamond and square only. Red/blue for other shapes. Both red and blue on snare splits the circle.";
+      descText = "Choose a color and instrument shape (up to 2 shapes). Green/orange for square (kick) only. Diamond allows all colors. Red/blue for other shapes. Both red and blue on snare splits the circle.";
     } else {
       descText = "Choose a color and symbol. Tap drums to add or remove from selection.";
     }
