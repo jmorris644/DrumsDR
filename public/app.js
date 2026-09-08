@@ -507,8 +507,26 @@ function kitCard(){
     // Four-limb: show all four colors
     allowedLimbs = ["RH", "LH", "RF", "LF"];
   } else if(sheetKey === "rightleftsnare1.1"){
-    // 2 limb combinations: show all four colors
-    allowedLimbs = ["RH", "LH", "RF", "LF"];
+    // Right/Left -- Snare: show all four colors with restrictions per shape
+    if(kitModal.length > 0){
+      // Check the selected shapes and determine which colors are allowed
+      const selectedVoices = kitModal.map(bt => VOICE[revoice(bt).slice(2)] || "snare");
+      const hasKickOrDiamond = selectedVoices.some(v => v === "kick" || v === "closedhat" || v === "openhat");
+      const hasOtherShapes = selectedVoices.some(v => !(v === "kick" || v === "closedhat" || v === "openhat"));
+
+      if(hasKickOrDiamond && !hasOtherShapes){
+        // Only kick/diamond selected: all 4 colors allowed
+        allowedLimbs = ["RH", "LH", "RF", "LF"];
+      } else if(!hasKickOrDiamond && hasOtherShapes){
+        // Only snare/other shapes: red and blue only
+        allowedLimbs = ["RH", "LH"];
+      } else {
+        // Mixed selection: show all colors
+        allowedLimbs = ["RH", "LH", "RF", "LF"];
+      }
+    } else {
+      allowedLimbs = ["RH", "LH", "RF", "LF"];
+    }
   } else {
     // Other drills: apply instrument rules
     const allKickOrHat = kitModal.every(bt => {
@@ -558,6 +576,16 @@ function kitCard(){
     }
 
     voices.forEach(([v,label])=>{
+      const b=document.createElement("button"); b.type="button"; b.className="voicebtn";
+      const voiceName = VOICE[v] || "snare";
+      b.innerHTML=`<svg viewBox="0 0 32 32" width="24" height="24">${shapeSVG(voiceName, "#9fb0c3")}</svg><span>${label}</span>`;
+      b.addEventListener("click",()=>setAllKitVoices(v));
+      symbols.appendChild(b);
+    });
+  } else if(sheetKey === "rightleftsnare1.1" && kitModal.length > 0) {
+    // Right/Left -- Snare: show full instrument list for selecting shapes
+    const allVoices = [...HAND_VOICES];
+    allVoices.forEach(([v,label])=>{
       const b=document.createElement("button"); b.type="button"; b.className="voicebtn";
       const voiceName = VOICE[v] || "snare";
       b.innerHTML=`<svg viewBox="0 0 32 32" width="24" height="24">${shapeSVG(voiceName, "#9fb0c3")}</svg><span>${label}</span>`;
@@ -644,14 +672,26 @@ function drumCircle(v){
     // single limb - show shape in that color
     result = `<g><svg x="${x}" y="${y}" width="${w}" height="${h}" viewBox="0 0 32 32">${shapeSVG(v, LIMB[limbs[0]].color)}</svg></g>`;
   } else if(limbs.length===2){
-    // split in half vertically for two limbs
-    const c1=LIMB[limbs[0]].color, c2=LIMB[limbs[1]].color;
-    const clipid=`clip-${v}-${Date.now()}`;
-    result = `<g><defs><clipPath id="${clipid}-left"><rect x="0" y="0" width="16" height="32"/></clipPath><clipPath id="${clipid}-right"><rect x="16" y="0" width="16" height="32"/></clipPath></defs>`+
-      `<svg x="${x}" y="${y}" width="${w}" height="${h}" viewBox="0 0 32 32">`+
-      `<g clip-path="url(#${clipid}-left)">${shapeSVG(v, c1)}</g>`+
-      `<g clip-path="url(#${clipid}-right)">${shapeSVG(v, c2)}</g>`+
-      `</svg></g>`;
+    // Special case: if snare with both RH and LH in Right/Left -- Snare drill, left side red, right side blue
+    if(v === "snare" && sheetKey === "rightleftsnare1.1" && limbs.includes("RH") && limbs.includes("LH")){
+      const c1=LIMB["LH"].color; // red on left
+      const c2=LIMB["RH"].color; // blue on right
+      const clipid=`clip-${v}-${Date.now()}`;
+      result = `<g><defs><clipPath id="${clipid}-left"><rect x="0" y="0" width="16" height="32"/></clipPath><clipPath id="${clipid}-right"><rect x="16" y="0" width="16" height="32"/></clipPath></defs>`+
+        `<svg x="${x}" y="${y}" width="${w}" height="${h}" viewBox="0 0 32 32">`+
+        `<g clip-path="url(#${clipid}-left)">${shapeSVG(v, c1)}</g>`+
+        `<g clip-path="url(#${clipid}-right)">${shapeSVG(v, c2)}</g>`+
+        `</svg></g>`;
+    } else {
+      // Other two-limb cases: split in half vertically for two limbs
+      const c1=LIMB[limbs[0]].color, c2=LIMB[limbs[1]].color;
+      const clipid=`clip-${v}-${Date.now()}`;
+      result = `<g><defs><clipPath id="${clipid}-left"><rect x="0" y="0" width="16" height="32"/></clipPath><clipPath id="${clipid}-right"><rect x="16" y="0" width="16" height="32"/></clipPath></defs>`+
+        `<svg x="${x}" y="${y}" width="${w}" height="${h}" viewBox="0 0 32 32">`+
+        `<g clip-path="url(#${clipid}-left)">${shapeSVG(v, c1)}</g>`+
+        `<g clip-path="url(#${clipid}-right)">${shapeSVG(v, c2)}</g>`+
+        `</svg></g>`;
+    }
   } else {
     // 3+ limbs: show as a multi-color stripe pattern using a circle with pie slices, then overlay the shape
     const colors=limbs.map(l=>LIMB[l].color);
@@ -686,12 +726,16 @@ function renderKit(){
   if(kitModal.length > 0){
     if(isThreeOrFourLimb){
       descText = "Choose an instrument for the selected drum. Tap drums to add or remove from selection.";
+    } else if(sheetKey === "rightleftsnare1.1"){
+      descText = "Choose a color and instrument shape (up to 2 shapes). Green/orange for diamond and square only. Red/blue for other shapes. Both red and blue on snare splits the circle.";
     } else {
       descText = "Choose a color and symbol. Tap drums to add or remove from selection.";
     }
   } else {
     if(isThreeOrFourLimb){
       descText = "Tap each drum to select it, then pick an instrument. You can select drums one at a time or multiple at once.";
+    } else if(sheetKey === "rightleftsnare1.1"){
+      descText = "Tap any instrument shape to select it (up to 2 at a time), then choose colors and instruments.";
     } else {
       descText = "Tap drums to select them. You can select multiple drums at once.";
     }
@@ -743,20 +787,33 @@ function renderKit(){
         return effVoice===v || (v==="closedhat"&&effVoice==="openhat") || (v==="snare"&&(effVoice==="ghost"||effVoice==="rest"));
       });
       if(matched.length>0){
-        // Check if ANY of the matched drums are currently selected
-        const anySelected = matched.some(bt => kitModal.includes(bt));
-
-        if(anySelected){
-          // If any are selected, remove ALL matched drums from selection
-          matched.forEach(bt => {
-            const idx = kitModal.indexOf(bt);
-            if(idx >= 0) kitModal.splice(idx, 1);
-          });
+        // For Right/Left -- Snare, allow selecting individual drums (up to 2)
+        if(sheetKey === "rightleftsnare1.1"){
+          // For this drill, select ONE drum at a time (first matched)
+          const bt = matched[0];
+          const idx = kitModal.indexOf(bt);
+          if(idx >= 0){
+            // Already selected - remove it
+            kitModal.splice(idx, 1);
+          } else {
+            // Add it - but limit to 2 selections total
+            if(kitModal.length < 2){
+              kitModal.push(bt);
+            }
+          }
         } else {
-          // None selected - add ALL matched drums to selection
-          matched.forEach(bt => {
-            if(!kitModal.includes(bt)) kitModal.push(bt);
-          });
+          // Other drills: original behavior (select all matched)
+          const anySelected = matched.some(bt => kitModal.includes(bt));
+          if(anySelected){
+            matched.forEach(bt => {
+              const idx = kitModal.indexOf(bt);
+              if(idx >= 0) kitModal.splice(idx, 1);
+            });
+          } else {
+            matched.forEach(bt => {
+              if(!kitModal.includes(bt)) kitModal.push(bt);
+            });
+          }
         }
         renderKit();
       }
