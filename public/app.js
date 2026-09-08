@@ -445,7 +445,7 @@ function exitIsolate(){
 
 /* ---------- Drum Key page: re-voice the current drill ---------- */
 let kitModal=[];   // array of base-tokens being edited (can select multiple)
-function openKit(){ kitView=true; kitModal=[]; renderSheet(); }
+function openKit(){ kitView=true; kitModal=[]; if(!voicing[sheetKey]) voicing[sheetKey]={}; renderSheet(); }
 function closeKit(){ kitView=false; kitModal=[]; renderSheet(); }
 function setEff(bt,token){               // set/clear a symbol's effective (limb+voice)
   if(!voicing[sheetKey]) voicing[sheetKey]={};
@@ -481,34 +481,45 @@ function kitCard(){
 
   // Show summary of selected drums with their current colors/shapes
   const head=document.createElement("div"); head.className="kithead";
-  const count = kitModal.length;
-  const bs=distinctSymbols(sheetKey);
-  if(count === 1){
-    const bt = kitModal[0];
-    const eff=revoice(bt), limb=eff.slice(0,2), vcode=eff.slice(2);
-    const voiceName = VOICE[vcode]||"snare";
-    const isInBaseDrill = bs.includes(bt);
-    if(isInBaseDrill){
-      head.innerHTML=`<span class="kitorig">${LIMB[bt.slice(0,2)].name} · ${VOICE[bt.slice(2)]}</span>`+
-                     `<span class="kitarrow">→</span>`+
-                     `<svg viewBox="0 0 32 32" width="20" height="20" style="vertical-align:middle">${shapeSVG(voiceName, LIMB[limb].color)}</svg>`+
-                     `<span class="kitnow">${LIMB[limb].name} · ${voiceName}</span>`;
+  if(sheetKey === "rightleftsnare1.1"){
+    // For Right/Left Snare, show current state
+    const lhEff=revoice("LHs"), rhEff=revoice("RHs");
+    const lhColor=LIMB[lhEff.slice(0,2)].color, rhColor=LIMB[rhEff.slice(0,2)].color;
+    if(lhColor === rhColor){
+      // Both same color
+      head.innerHTML=`<span class="kitnow">Currently: all snares ${lhColor === LIMB.RH.color ? "blue" : "red"}</span>`;
     } else {
-      // Synthetic token (not in base drill)
-      head.innerHTML=`<svg viewBox="0 0 32 32" width="20" height="20" style="vertical-align:middle">${shapeSVG(voiceName, LIMB[limb].color)}</svg>`+
-                     `<span class="kitnow">${LIMB[limb].name} · ${voiceName}</span>`;
+      // Half and half
+      head.innerHTML=`<span class="kitnow">Currently: half blue / half red</span>`;
     }
-  } else if(count === 2) {
-    // Show both selected drums with their colors
-    const drums = kitModal.map(bt => {
+  } else {
+    const count = kitModal.length;
+    const bs=distinctSymbols(sheetKey);
+    if(count === 1){
+      const bt = kitModal[0];
       const eff=revoice(bt), limb=eff.slice(0,2), vcode=eff.slice(2);
       const voiceName = VOICE[vcode]||"snare";
-      return {limb, voiceName, color: LIMB[limb].color};
-    });
-    head.innerHTML=`<span class="kitnow">Selected:</span>`+
-      drums.map(d => `<svg viewBox="0 0 32 32" width="20" height="20" style="vertical-align:middle">${shapeSVG(d.voiceName, d.color)}</svg>`).join(' ');
-  } else {
-    head.innerHTML=`<span class="kitnow">${count} drums selected</span>`;
+      const isInBaseDrill = bs.includes(bt);
+      if(isInBaseDrill){
+        head.innerHTML=`<span class="kitorig">${LIMB[bt.slice(0,2)].name} · ${VOICE[bt.slice(2)]}</span>`+
+                       `<span class="kitarrow">→</span>`+
+                       `<svg viewBox="0 0 32 32" width="20" height="20" style="vertical-align:middle">${shapeSVG(voiceName, LIMB[limb].color)}</svg>`+
+                       `<span class="kitnow">${LIMB[limb].name} · ${voiceName}</span>`;
+      } else {
+        head.innerHTML=`<svg viewBox="0 0 32 32" width="20" height="20" style="vertical-align:middle">${shapeSVG(voiceName, LIMB[limb].color)}</svg>`+
+                       `<span class="kitnow">${LIMB[limb].name} · ${voiceName}</span>`;
+      }
+    } else if(count === 2) {
+      const drums = kitModal.map(bt => {
+        const eff=revoice(bt), limb=eff.slice(0,2), vcode=eff.slice(2);
+        const voiceName = VOICE[vcode]||"snare";
+        return {limb, voiceName, color: LIMB[limb].color};
+      });
+      head.innerHTML=`<span class="kitnow">Selected:</span>`+
+        drums.map(d => `<svg viewBox="0 0 32 32" width="20" height="20" style="vertical-align:middle">${shapeSVG(d.voiceName, d.color)}</svg>`).join(' ');
+    } else {
+      head.innerHTML=`<span class="kitnow">${count} drums selected</span>`;
+    }
   }
   card.appendChild(head);
 
@@ -589,20 +600,13 @@ function kitCard(){
       symbols.appendChild(b);
     });
   } else if(sheetKey === "rightleftsnare1.1" && kitModal.length > 0) {
-    // Right/Left -- Snare: show combined instrument+color options
-    // Snare options: blue, red, or half-blue/half-red
+    // Right/Left -- Snare: simple buttons for all snares to be one color
     const snareBlueBtn=document.createElement("button"); snareBlueBtn.type="button"; snareBlueBtn.className="voicebtn";
-    snareBlueBtn.innerHTML=`<svg viewBox="0 0 32 32" width="24" height="24">${shapeSVG("snare", LIMB["RH"].color)}</svg><span>Snare (blue)</span>`;
+    snareBlueBtn.innerHTML=`<svg viewBox="0 0 32 32" width="24" height="24">${shapeSVG("snare", LIMB["RH"].color)}</svg><span>All snares blue</span>`;
     snareBlueBtn.addEventListener("click",()=>{
-      // For rightleftsnare1.1, update ALL snare tokens (both LHs and RHs) to blue
       if(!voicing[sheetKey]) voicing[sheetKey]={};
-      const bs=distinctSymbols(sheetKey);
-      bs.forEach(bt=>{
-        const voice=VOICE[bt.slice(2)]||"snare";
-        if(voice==="snare" || voice==="ghost" || voice==="rest"){
-          voicing[sheetKey][bt]="RHs";
-        }
-      });
+      voicing[sheetKey]["LHs"]="RHs";
+      voicing[sheetKey]["RHs"]="RHs";
       saveVoicing();
       kitModal=[];
       renderKit();
@@ -610,24 +614,17 @@ function kitCard(){
     symbols.appendChild(snareBlueBtn);
 
     const snareRedBtn=document.createElement("button"); snareRedBtn.type="button"; snareRedBtn.className="voicebtn";
-    snareRedBtn.innerHTML=`<svg viewBox="0 0 32 32" width="24" height="24">${shapeSVG("snare", LIMB["LH"].color)}</svg><span>Snare (red)</span>`;
+    snareRedBtn.innerHTML=`<svg viewBox="0 0 32 32" width="24" height="24">${shapeSVG("snare", LIMB["LH"].color)}</svg><span>All snares red</span>`;
     snareRedBtn.addEventListener("click",()=>{
-      // For rightleftsnare1.1, update ALL snare tokens (both LHs and RHs) to red
       if(!voicing[sheetKey]) voicing[sheetKey]={};
-      const bs=distinctSymbols(sheetKey);
-      bs.forEach(bt=>{
-        const voice=VOICE[bt.slice(2)]||"snare";
-        if(voice==="snare" || voice==="ghost" || voice==="rest"){
-          voicing[sheetKey][bt]="LHs";
-        }
-      });
+      voicing[sheetKey]["LHs"]="LHs";
+      voicing[sheetKey]["RHs"]="LHs";
       saveVoicing();
       kitModal=[];
       renderKit();
     });
     symbols.appendChild(snareRedBtn);
 
-    // Half-split snare button with both colors
     const snareBothBtn=document.createElement("button"); snareBothBtn.type="button"; snareBothBtn.className="voicebtn";
     const clipid=`snare-both-${Date.now()}`;
     snareBothBtn.innerHTML=`<svg viewBox="0 0 32 32" width="24" height="24">
@@ -637,132 +634,16 @@ function kitCard(){
       </defs>
       <g clip-path="url(#${clipid}-left)">${shapeSVG("snare", LIMB["LH"].color)}</g>
       <g clip-path="url(#${clipid}-right)">${shapeSVG("snare", LIMB["RH"].color)}</g>
-    </svg><span>Snare (half blue / half red)</span>`;
+    </svg><span>Half blue / half red</span>`;
     snareBothBtn.addEventListener("click",()=>{
-      if(kitModal.length === 2){
-        const bt0=kitModal[0], bt1=kitModal[1];
-        if(!voicing[sheetKey]) voicing[sheetKey]={};
-        voicing[sheetKey][bt0]="LHs";
-        voicing[sheetKey][bt1]="RHs";
-        saveVoicing();
-        kitModal=[];
-        renderKit();
-      }
+      if(!voicing[sheetKey]) voicing[sheetKey]={};
+      voicing[sheetKey]["LHs"]="LHs";
+      voicing[sheetKey]["RHs"]="RHs";
+      saveVoicing();
+      kitModal=[];
+      renderKit();
     });
     symbols.appendChild(snareBothBtn);
-
-    // Kick options: green or orange
-    const kickGreenBtn=document.createElement("button"); kickGreenBtn.type="button"; kickGreenBtn.className="voicebtn";
-    kickGreenBtn.innerHTML=`<svg viewBox="0 0 32 32" width="24" height="24">${shapeSVG("kick", LIMB["RF"].color)}</svg><span>Kick (green)</span>`;
-    kickGreenBtn.addEventListener("click",()=>{
-      // For rightleftsnare1.1, update ALL kick tokens to green
-      if(!voicing[sheetKey]) voicing[sheetKey]={};
-      const bs=distinctSymbols(sheetKey);
-      bs.forEach(bt=>{
-        const voice=VOICE[bt.slice(2)]||"snare";
-        if(voice==="kick"){
-          voicing[sheetKey][bt]="RFk";
-        }
-      });
-      // Also handle synthetic tokens in kitModal that might not be in base drill
-      kitModal.forEach(bt=>{
-        const voice=VOICE[bt.slice(2)]||"snare";
-        if(voice==="kick"){
-          voicing[sheetKey][bt]="RFk";
-        }
-      });
-      saveVoicing();
-      kitModal=[];
-      renderKit();
-    });
-    symbols.appendChild(kickGreenBtn);
-
-    const kickOrangeBtn=document.createElement("button"); kickOrangeBtn.type="button"; kickOrangeBtn.className="voicebtn";
-    kickOrangeBtn.innerHTML=`<svg viewBox="0 0 32 32" width="24" height="24">${shapeSVG("kick", LIMB["LF"].color)}</svg><span>Kick (orange)</span>`;
-    kickOrangeBtn.addEventListener("click",()=>{
-      // For rightleftsnare1.1, update ALL kick tokens to orange
-      if(!voicing[sheetKey]) voicing[sheetKey]={};
-      const bs=distinctSymbols(sheetKey);
-      bs.forEach(bt=>{
-        const voice=VOICE[bt.slice(2)]||"snare";
-        if(voice==="kick"){
-          voicing[sheetKey][bt]="LFk";
-        }
-      });
-      // Also handle synthetic tokens in kitModal that might not be in base drill
-      kitModal.forEach(bt=>{
-        const voice=VOICE[bt.slice(2)]||"snare";
-        if(voice==="kick"){
-          voicing[sheetKey][bt]="LFk";
-        }
-      });
-      saveVoicing();
-      kitModal=[];
-      renderKit();
-    });
-    symbols.appendChild(kickOrangeBtn);
-
-    // All other instruments: blue or red
-    const otherVoices = [
-      ["lt","Left tom"],["rt","Right tom"],["ft","Floor tom"],
-      ["rd","Ride"],["lc","Left crash"],["rc","Right crash"],
-      ["ch","Closed hi-hat"],["oh","Open hi-hat"]
-    ];
-    otherVoices.forEach(([v,label])=>{
-      const voiceName = VOICE[v] || "snare";
-
-      // Blue version
-      const blueBtn=document.createElement("button"); blueBtn.type="button"; blueBtn.className="voicebtn";
-      blueBtn.innerHTML=`<svg viewBox="0 0 32 32" width="24" height="24">${shapeSVG(voiceName, LIMB["RH"].color)}</svg><span>${label} (blue)</span>`;
-      blueBtn.addEventListener("click",()=>{
-        // For rightleftsnare1.1, update ALL tokens of this voice to blue
-        if(!voicing[sheetKey]) voicing[sheetKey]={};
-        const bs=distinctSymbols(sheetKey);
-        bs.forEach(bt=>{
-          const voice=VOICE[bt.slice(2)]||"snare";
-          if(voice===voiceName || (voiceName==="closedhat"&&voice==="openhat")){
-            voicing[sheetKey][bt]="RH"+v;
-          }
-        });
-        // Also handle synthetic tokens in kitModal that might not be in base drill
-        kitModal.forEach(bt=>{
-          const voice=VOICE[bt.slice(2)]||"snare";
-          if(voice===voiceName || (voiceName==="closedhat"&&voice==="openhat")){
-            voicing[sheetKey][bt]="RH"+v;
-          }
-        });
-        saveVoicing();
-        kitModal=[];
-        renderKit();
-      });
-      symbols.appendChild(blueBtn);
-
-      // Red version
-      const redBtn=document.createElement("button"); redBtn.type="button"; redBtn.className="voicebtn";
-      redBtn.innerHTML=`<svg viewBox="0 0 32 32" width="24" height="24">${shapeSVG(voiceName, LIMB["LH"].color)}</svg><span>${label} (red)</span>`;
-      redBtn.addEventListener("click",()=>{
-        // For rightleftsnare1.1, update ALL tokens of this voice to red
-        if(!voicing[sheetKey]) voicing[sheetKey]={};
-        const bs=distinctSymbols(sheetKey);
-        bs.forEach(bt=>{
-          const voice=VOICE[bt.slice(2)]||"snare";
-          if(voice===voiceName || (voiceName==="closedhat"&&voice==="openhat")){
-            voicing[sheetKey][bt]="LH"+v;
-          }
-        });
-        // Also handle synthetic tokens in kitModal that might not be in base drill
-        kitModal.forEach(bt=>{
-          const voice=VOICE[bt.slice(2)]||"snare";
-          if(voice===voiceName || (voiceName==="closedhat"&&voice==="openhat")){
-            voicing[sheetKey][bt]="LH"+v;
-          }
-        });
-        saveVoicing();
-        kitModal=[];
-        renderKit();
-      });
-      symbols.appendChild(redBtn);
-    });
   } else if(kitModal.length > 0) {
     // Other drills: show color swatches and basic instruments
     if(!isThreeOrFourLimb){
@@ -828,16 +709,12 @@ function limbsForVoice(v){
   const bs=distinctSymbols(sheetKey);
   const limbs=[];
 
-  // For Right/Left Snare drill, ONLY use voicing assignments, not the base drill symbols
-  if(sheetKey === "rightleftsnare1.1"){
-    if(voicing[sheetKey]){
-      Object.values(voicing[sheetKey]).forEach(tok=>{
-        const effVoice=VOICE[tok.slice(2)]||"snare";
-        if(effVoice===v || (v==="closedhat"&&effVoice==="openhat") || (v==="snare"&&(effVoice==="ghost"||effVoice==="rest"))){
-          const lm=tok.slice(0,2); if(!limbs.includes(lm)) limbs.push(lm);
-        }
-      });
-    }
+  // For Right/Left Snare drill, show the current snare voicing
+  if(sheetKey === "rightleftsnare1.1" && v === "snare"){
+    const lhEff=revoice("LHs"), rhEff=revoice("RHs");
+    const lhLimb=lhEff.slice(0,2), rhLimb=rhEff.slice(0,2);
+    if(!limbs.includes(lhLimb)) limbs.push(lhLimb);
+    if(!limbs.includes(rhLimb)) limbs.push(rhLimb);
   } else {
     // Other drills: use the original logic
     bs.forEach(bt=>{
@@ -870,17 +747,18 @@ function drumCircle(v){
   const y = pos.cy - pos.r * scale;
 
   // Check if this drum is in the current selection
-  const bs=distinctSymbols(sheetKey);
-  const matched=bs.filter(bt=>{
-    const eff=revoice(bt); const effVoice=VOICE[eff.slice(2)]||"snare";
-    return effVoice===v || (v==="closedhat"&&effVoice==="openhat") || (v==="snare"&&(effVoice==="ghost"||effVoice==="rest"));
-  });
-  // Also check for synthetic tokens in kitModal
-  const syntheticInModal = kitModal.filter(tok=>{
-    const effVoice=VOICE[tok.slice(2)]||"snare";
-    return effVoice===v || (v==="closedhat"&&effVoice==="openhat") || (v==="snare"&&(effVoice==="ghost"||effVoice==="rest"));
-  });
-  const isSelected = matched.some(bt => kitModal.includes(bt)) || syntheticInModal.length > 0;
+  let isSelected = false;
+  if(sheetKey === "rightleftsnare1.1"){
+    // For Right/Left Snare, selection is just "snare" or empty
+    isSelected = (v === "snare" && kitModal.includes("snare"));
+  } else {
+    const bs=distinctSymbols(sheetKey);
+    const matched=bs.filter(bt=>{
+      const eff=revoice(bt); const effVoice=VOICE[eff.slice(2)]||"snare";
+      return effVoice===v || (v==="closedhat"&&effVoice==="openhat") || (v==="snare"&&(effVoice==="ghost"||effVoice==="rest"));
+    });
+    isSelected = matched.some(bt => kitModal.includes(bt));
+  }
 
   let result = "";
 
@@ -927,12 +805,9 @@ function drumCircle(v){
       `<svg x="${x}" y="${y}" width="${w}" height="${h}" viewBox="0 0 32 32">${shapeSVG(v, "#fff")}</svg></g>`;
   }
 
-  // Add selection highlight if this drum is selected (but not for diamond shape)
-  if(isSelected && v !== "closedhat"){
-    // Use the color of the first selected drum that maps to this voice
-    const selectedDrum = matched.find(bt => kitModal.includes(bt)) || syntheticInModal[0];
-    const highlightColor = selectedDrum ? LIMB[revoice(selectedDrum).slice(0,2)].color : LIMB.RH.color;
-    result += `<circle cx="${pos.cx}" cy="${pos.cy}" r="${pos.r + 8}" fill="none" stroke="${highlightColor}" stroke-width="3" opacity="0.8"/>`;
+  // Add selection highlight if this drum is selected
+  if(isSelected){
+    result += `<circle cx="${pos.cx}" cy="${pos.cy}" r="${pos.r + 8}" fill="none" stroke="#2f81f7" stroke-width="3" opacity="0.8"/>`;
   }
 
   return result;
@@ -951,19 +826,21 @@ function renderKit(){
   document.getElementById("sheetName").textContent="🥁 Drum Key — "+m.name;
 
   let descText;
-  if(kitModal.length > 0){
+  if(sheetKey === "rightleftsnare1.1"){
+    if(kitModal.length > 0){
+      descText = "Pick one of the three options below to change the snare colors.";
+    } else {
+      descText = "Tap the snare drum below to select it, then choose your colors.";
+    }
+  } else if(kitModal.length > 0){
     if(isThreeOrFourLimb){
       descText = "Choose an instrument for the selected drum. Tap drums to add or remove from selection.";
-    } else if(sheetKey === "rightleftsnare1.1"){
-      descText = "Pick a color (any color works with any shape). Pick an instrument shape. Select up to 2 drums at once.";
     } else {
       descText = "Choose a color and symbol. Tap drums to add or remove from selection.";
     }
   } else {
     if(isThreeOrFourLimb){
       descText = "Tap each drum to select it, then pick an instrument. You can select drums one at a time or multiple at once.";
-    } else if(sheetKey === "rightleftsnare1.1"){
-      descText = "Tap drums to select exactly 2 instruments, then pick your colors from the list.";
     } else {
       descText = "Tap drums to select them. You can select multiple drums at once.";
     }
@@ -1014,39 +891,19 @@ function renderKit(){
         const eff=revoice(bt); const effVoice=VOICE[eff.slice(2)]||"snare";
         return effVoice===v || (v==="closedhat"&&effVoice==="openhat") || (v==="snare"&&(effVoice==="ghost"||effVoice==="rest"));
       });
-      // For Right/Left -- Snare, allow clicking any drum even if it's not in the base drill
+      if(matched.length===0) return;
+      // For Right/Left -- Snare, only allow clicking the snare, and just toggle selection
       if(sheetKey === "rightleftsnare1.1"){
-        // If there are no matched drums (drum not in base drill), create a synthetic token
-        if(matched.length === 0){
-          // Create a token for this voice with the default limb for that voice type
-          const defaultLimb = (v === "kick") ? "RF" : "RH";
-          const vcode = Object.keys(VOICE).find(k => VOICE[k] === v) || "s";
-          const syntheticToken = defaultLimb + vcode;
-          const idx = kitModal.indexOf(syntheticToken);
-          if(idx >= 0){
-            kitModal.splice(idx, 1);
+        if(v === "snare"){
+          if(kitModal.length > 0){
+            kitModal=[];
           } else {
-            if(kitModal.length < 2){
-              kitModal.push(syntheticToken);
-            }
-          }
-        } else {
-          // For this drill, select ONE drum at a time (first matched)
-          const bt = matched[0];
-          const idx = kitModal.indexOf(bt);
-          if(idx >= 0){
-            // Already selected - remove it
-            kitModal.splice(idx, 1);
-          } else {
-            // Add it - but limit to 2 selections total
-            if(kitModal.length < 2){
-              kitModal.push(bt);
-            }
+            kitModal=["snare"];  // just a marker that snare is selected
           }
         }
         renderKit();
-      } else if(matched.length>0){
-        // Other drills: original behavior (select all matched)
+      } else {
+        // Other drills: select all matched drums
         const anySelected = matched.some(bt => kitModal.includes(bt));
         if(anySelected){
           matched.forEach(bt => {
