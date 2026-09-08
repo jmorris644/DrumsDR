@@ -479,15 +479,26 @@ function kitCard(){
   const isFourLimb = sheetKey === "RHLHRFLF";
   const isThreeOrFourLimb = isThreeLimbRF || isThreeLimbLF || isFourLimb;
 
-  // Show summary of selected drums
+  // Show summary of selected drums with their current colors/shapes
   const head=document.createElement("div"); head.className="kithead";
   const count = kitModal.length;
   if(count === 1){
     const bt = kitModal[0];
     const eff=revoice(bt), limb=eff.slice(0,2), vcode=eff.slice(2);
+    const voiceName = VOICE[vcode]||"snare";
     head.innerHTML=`<span class="kitorig">${LIMB[bt.slice(0,2)].name} · ${VOICE[bt.slice(2)]}</span>`+
                    `<span class="kitarrow">→</span>`+
-                   `<span class="kitnow">${LIMB[limb].name} · ${VOICE[vcode]||"snare"}</span>`;
+                   `<svg viewBox="0 0 32 32" width="20" height="20" style="vertical-align:middle">${shapeSVG(voiceName, LIMB[limb].color)}</svg>`+
+                   `<span class="kitnow">${LIMB[limb].name} · ${voiceName}</span>`;
+  } else if(count === 2) {
+    // Show both selected drums with their colors
+    const drums = kitModal.map(bt => {
+      const eff=revoice(bt), limb=eff.slice(0,2), vcode=eff.slice(2);
+      const voiceName = VOICE[vcode]||"snare";
+      return {limb, voiceName, color: LIMB[limb].color};
+    });
+    head.innerHTML=`<span class="kitnow">Selected:</span>`+
+      drums.map(d => `<svg viewBox="0 0 32 32" width="20" height="20" style="vertical-align:middle">${shapeSVG(d.voiceName, d.color)}</svg>`).join(' ');
   } else {
     head.innerHTML=`<span class="kitnow">${count} drums selected</span>`;
   }
@@ -663,11 +674,20 @@ function drumCircle(v){
   const x = pos.cx - pos.r * scale;
   const y = pos.cy - pos.r * scale;
 
+  // Check if this drum is in the current selection
+  const bs=distinctSymbols(sheetKey);
+  const matched=bs.filter(bt=>{
+    const eff=revoice(bt); const effVoice=VOICE[eff.slice(2)]||"snare";
+    return effVoice===v || (v==="closedhat"&&effVoice==="openhat") || (v==="snare"&&(effVoice==="ghost"||effVoice==="rest"));
+  });
+  const isSelected = matched.some(bt => kitModal.includes(bt));
+
   let result = "";
 
   if(limbs.length===0) {
     // empty drum - show shape with gray fill
-    result = `<g opacity="0.5"><svg x="${x}" y="${y}" width="${w}" height="${h}" viewBox="0 0 32 32">${shapeSVG(v, "#55647d")}</svg></g>`;
+    const opacity = isSelected ? "1" : "0.5";
+    result = `<g opacity="${opacity}"><svg x="${x}" y="${y}" width="${w}" height="${h}" viewBox="0 0 32 32">${shapeSVG(v, "#55647d")}</svg></g>`;
   } else if(limbs.length===1) {
     // single limb - show shape in that color
     result = `<g><svg x="${x}" y="${y}" width="${w}" height="${h}" viewBox="0 0 32 32">${shapeSVG(v, LIMB[limbs[0]].color)}</svg></g>`;
@@ -705,6 +725,14 @@ function drumCircle(v){
     });
     result = `<g>${path}<circle cx="${pos.cx}" cy="${pos.cy}" r="${pos.r}" fill="none" stroke="#fff" stroke-width="2"/>`+
       `<svg x="${x}" y="${y}" width="${w}" height="${h}" viewBox="0 0 32 32">${shapeSVG(v, "#fff")}</svg></g>`;
+  }
+
+  // Add selection highlight if this drum is selected
+  if(isSelected){
+    // Use the color of the first selected drum that maps to this voice
+    const selectedDrum = matched.find(bt => kitModal.includes(bt));
+    const highlightColor = selectedDrum ? LIMB[revoice(selectedDrum).slice(0,2)].color : LIMB.RH.color;
+    result += `<circle cx="${pos.cx}" cy="${pos.cy}" r="${pos.r + 8}" fill="none" stroke="${highlightColor}" stroke-width="3" opacity="0.8"/>`;
   }
 
   return result;
