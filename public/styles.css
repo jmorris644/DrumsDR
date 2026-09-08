@@ -108,7 +108,7 @@
 
   /* Drum Key (re-voicing) page */
   .kitbtn.on{border-color:var(--accent);color:var(--accent)}
-  .kit{display:flex;flex-direction:column;gap:12px;padding:2px}
+  .kit{display:flex;flex-direction:column;gap:12px;padding:2px;position:relative}
   .kitprev{background:var(--panel2);border:1px solid var(--line);border-radius:10px;padding:10px 12px}
   .kitprevlbl{font-size:11px;text-transform:uppercase;letter-spacing:.6px;color:var(--dim);margin-bottom:8px}
   .kitcard{background:var(--panel2);border:1px solid var(--line);border-radius:10px;padding:10px 12px;display:flex;flex-direction:column;gap:9px}
@@ -126,6 +126,12 @@
   .restlbl{font-size:10px;color:var(--dim)}
   .kitfoot{display:flex}
   .kitreset{align-self:flex-start}
+  .kitmodal{position:absolute;top:20px;right:20px;max-width:420px;z-index:10;
+    box-shadow:0 8px 24px rgba(0,0,0,.6)}
+  .kitclose{position:absolute;top:8px;right:8px;background:transparent;border:0;
+    color:var(--dim);font-size:18px;cursor:pointer;padding:4px 8px;border-radius:6px;
+    line-height:1;z-index:1}
+  .kitclose:hover{color:var(--ink);background:rgba(255,255,255,.1)}
 
   /* transport */
   .transport{position:fixed;left:0;right:0;bottom:0;background:rgba(16,20,27,.92);
