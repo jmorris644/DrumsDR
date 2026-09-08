@@ -595,14 +595,14 @@ function kitCard(){
     voices.forEach(([v,label])=>{
       const b=document.createElement("button"); b.type="button"; b.className="voicebtn";
       const voiceName = VOICE[v] || "snare";
-      b.innerHTML=`<svg viewBox="0 0 32 32" width="24" height="24">${shapeSVG(voiceName, "#9fb0c3")}</svg><span>${label}</span>`;
+      b.innerHTML=`<svg viewBox="0 0 32 32" width="24" height="24">${shapeSVG(voiceName, "#9fb0c3")}</svg>`;
       b.addEventListener("click",()=>setAllKitVoices(v));
       symbols.appendChild(b);
     });
   } else if(sheetKey === "rightleftsnare1.1" && kitModal.length > 0) {
     // Right/Left -- Snare: simple buttons for all snares to be one color
     const snareBlueBtn=document.createElement("button"); snareBlueBtn.type="button"; snareBlueBtn.className="voicebtn";
-    snareBlueBtn.innerHTML=`<svg viewBox="0 0 32 32" width="24" height="24">${shapeSVG("snare", LIMB["RH"].color)}</svg><span>All snares blue</span>`;
+    snareBlueBtn.innerHTML=`<svg viewBox="0 0 32 32" width="24" height="24">${shapeSVG("snare", LIMB["RH"].color)}</svg>`;
     snareBlueBtn.addEventListener("click",()=>{
       if(!voicing[sheetKey]) voicing[sheetKey]={};
       voicing[sheetKey]["LHs"]="RHs";
@@ -615,7 +615,7 @@ function kitCard(){
     symbols.appendChild(snareBlueBtn);
 
     const snareRedBtn=document.createElement("button"); snareRedBtn.type="button"; snareRedBtn.className="voicebtn";
-    snareRedBtn.innerHTML=`<svg viewBox="0 0 32 32" width="24" height="24">${shapeSVG("snare", LIMB["LH"].color)}</svg><span>All snares red</span>`;
+    snareRedBtn.innerHTML=`<svg viewBox="0 0 32 32" width="24" height="24">${shapeSVG("snare", LIMB["LH"].color)}</svg>`;
     snareRedBtn.addEventListener("click",()=>{
       if(!voicing[sheetKey]) voicing[sheetKey]={};
       voicing[sheetKey]["RHs"]="LHs";
@@ -636,7 +636,7 @@ function kitCard(){
       </defs>
       <g clip-path="url(#${clipid}-left)">${shapeSVG("snare", LIMB["LH"].color)}</g>
       <g clip-path="url(#${clipid}-right)">${shapeSVG("snare", LIMB["RH"].color)}</g>
-    </svg><span>Half blue / half red</span>`;
+    </svg>`;
     snareBothBtn.addEventListener("click",()=>{
       delete voicing[sheetKey];
       saveVoicing();
@@ -662,7 +662,7 @@ function kitCard(){
     const specialVoices = [["g","Ghost note"],["x","Rest"]];
     specialVoices.forEach(([v,label])=>{
       const b=document.createElement("button"); b.type="button"; b.className="voicebtn";
-      b.innerHTML=`<svg viewBox="0 0 32 32" width="24" height="24">${shapeSVG(VOICE[v]||"snare", "#9fb0c3")}</svg><span>${label}</span>`;
+      b.innerHTML=`<svg viewBox="0 0 32 32" width="24" height="24">${shapeSVG(VOICE[v]||"snare", "#9fb0c3")}</svg>`;
       b.addEventListener("click",()=>setAllKitVoices(v));
       symbols.appendChild(b);
     });
@@ -675,7 +675,7 @@ function kitCard(){
     const resetBtn=document.createElement("button");
     resetBtn.type="button";
     resetBtn.className="voicebtn resetbtn";
-    resetBtn.innerHTML=`<span>↺ Use default</span>`;
+    resetBtn.innerHTML=`↺`;
     resetBtn.addEventListener("click",()=>{
       kitModal.forEach(bt => {
         if(!voicing[sheetKey]) return;
