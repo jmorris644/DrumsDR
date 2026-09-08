@@ -891,7 +891,7 @@ function renderKit(){
     if(isThreeOrFourLimb){
       descText = "Tap each drum to select it, then pick an instrument. You can select drums one at a time or multiple at once.";
     } else if(sheetKey === "rightleftsnare1.1"){
-      descText = "Tap any drum to select it (up to 2 at once), then choose a color and instrument shape.";
+      descText = "Tap drums to select exactly 2 instruments, then pick your colors from the list.";
     } else {
       descText = "Tap drums to select them. You can select multiple drums at once.";
     }
