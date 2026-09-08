@@ -482,14 +482,22 @@ function kitCard(){
   // Show summary of selected drums with their current colors/shapes
   const head=document.createElement("div"); head.className="kithead";
   const count = kitModal.length;
+  const bs=distinctSymbols(sheetKey);
   if(count === 1){
     const bt = kitModal[0];
     const eff=revoice(bt), limb=eff.slice(0,2), vcode=eff.slice(2);
     const voiceName = VOICE[vcode]||"snare";
-    head.innerHTML=`<span class="kitorig">${LIMB[bt.slice(0,2)].name} · ${VOICE[bt.slice(2)]}</span>`+
-                   `<span class="kitarrow">→</span>`+
-                   `<svg viewBox="0 0 32 32" width="20" height="20" style="vertical-align:middle">${shapeSVG(voiceName, LIMB[limb].color)}</svg>`+
-                   `<span class="kitnow">${LIMB[limb].name} · ${voiceName}</span>`;
+    const isInBaseDrill = bs.includes(bt);
+    if(isInBaseDrill){
+      head.innerHTML=`<span class="kitorig">${LIMB[bt.slice(0,2)].name} · ${VOICE[bt.slice(2)]}</span>`+
+                     `<span class="kitarrow">→</span>`+
+                     `<svg viewBox="0 0 32 32" width="20" height="20" style="vertical-align:middle">${shapeSVG(voiceName, LIMB[limb].color)}</svg>`+
+                     `<span class="kitnow">${LIMB[limb].name} · ${voiceName}</span>`;
+    } else {
+      // Synthetic token (not in base drill)
+      head.innerHTML=`<svg viewBox="0 0 32 32" width="20" height="20" style="vertical-align:middle">${shapeSVG(voiceName, LIMB[limb].color)}</svg>`+
+                     `<span class="kitnow">${LIMB[limb].name} · ${voiceName}</span>`;
+    }
   } else if(count === 2) {
     // Show both selected drums with their colors
     const drums = kitModal.map(bt => {
@@ -665,6 +673,15 @@ function limbsForVoice(v){
       const lm=eff.slice(0,2); if(!limbs.includes(lm)) limbs.push(lm);
     }
   });
+  // Also check for synthetic tokens in the voicing map that map to this voice
+  if(voicing[sheetKey]){
+    Object.values(voicing[sheetKey]).forEach(tok=>{
+      const effVoice=VOICE[tok.slice(2)]||"snare";
+      if(effVoice===v || (v==="closedhat"&&effVoice==="openhat") || (v==="snare"&&(effVoice==="ghost"||effVoice==="rest"))){
+        const lm=tok.slice(0,2); if(!limbs.includes(lm)) limbs.push(lm);
+      }
+    });
+  }
   return limbs;
 }
 function drumCircle(v){
@@ -684,7 +701,12 @@ function drumCircle(v){
     const eff=revoice(bt); const effVoice=VOICE[eff.slice(2)]||"snare";
     return effVoice===v || (v==="closedhat"&&effVoice==="openhat") || (v==="snare"&&(effVoice==="ghost"||effVoice==="rest"));
   });
-  const isSelected = matched.some(bt => kitModal.includes(bt));
+  // Also check for synthetic tokens in kitModal
+  const syntheticInModal = kitModal.filter(tok=>{
+    const effVoice=VOICE[tok.slice(2)]||"snare";
+    return effVoice===v || (v==="closedhat"&&effVoice==="openhat") || (v==="snare"&&(effVoice==="ghost"||effVoice==="rest"));
+  });
+  const isSelected = matched.some(bt => kitModal.includes(bt)) || syntheticInModal.length > 0;
 
   let result = "";
 
@@ -734,7 +756,7 @@ function drumCircle(v){
   // Add selection highlight if this drum is selected
   if(isSelected){
     // Use the color of the first selected drum that maps to this voice
-    const selectedDrum = matched.find(bt => kitModal.includes(bt));
+    const selectedDrum = matched.find(bt => kitModal.includes(bt)) || syntheticInModal[0];
     const highlightColor = selectedDrum ? LIMB[revoice(selectedDrum).slice(0,2)].color : LIMB.RH.color;
     result += `<circle cx="${pos.cx}" cy="${pos.cy}" r="${pos.r + 8}" fill="none" stroke="${highlightColor}" stroke-width="3" opacity="0.8"/>`;
   }
@@ -818,9 +840,23 @@ function renderKit(){
         const eff=revoice(bt); const effVoice=VOICE[eff.slice(2)]||"snare";
         return effVoice===v || (v==="closedhat"&&effVoice==="openhat") || (v==="snare"&&(effVoice==="ghost"||effVoice==="rest"));
       });
-      if(matched.length>0){
-        // For Right/Left -- Snare, allow selecting individual drums (up to 2)
-        if(sheetKey === "rightleftsnare1.1"){
+      // For Right/Left -- Snare, allow clicking any drum even if it's not in the base drill
+      if(sheetKey === "rightleftsnare1.1"){
+        // If there are no matched drums (drum not in base drill), create a synthetic token
+        if(matched.length === 0){
+          // Create a token for this voice with the default limb for that voice type
+          const defaultLimb = (v === "kick") ? "RF" : "RH";
+          const vcode = Object.keys(VOICE).find(k => VOICE[k] === v) || "s";
+          const syntheticToken = defaultLimb + vcode;
+          const idx = kitModal.indexOf(syntheticToken);
+          if(idx >= 0){
+            kitModal.splice(idx, 1);
+          } else {
+            if(kitModal.length < 2){
+              kitModal.push(syntheticToken);
+            }
+          }
+        } else {
           // For this drill, select ONE drum at a time (first matched)
           const bt = matched[0];
           const idx = kitModal.indexOf(bt);
@@ -833,19 +869,20 @@ function renderKit(){
               kitModal.push(bt);
             }
           }
+        }
+        renderKit();
+      } else if(matched.length>0){
+        // Other drills: original behavior (select all matched)
+        const anySelected = matched.some(bt => kitModal.includes(bt));
+        if(anySelected){
+          matched.forEach(bt => {
+            const idx = kitModal.indexOf(bt);
+            if(idx >= 0) kitModal.splice(idx, 1);
+          });
         } else {
-          // Other drills: original behavior (select all matched)
-          const anySelected = matched.some(bt => kitModal.includes(bt));
-          if(anySelected){
-            matched.forEach(bt => {
-              const idx = kitModal.indexOf(bt);
-              if(idx >= 0) kitModal.splice(idx, 1);
-            });
-          } else {
-            matched.forEach(bt => {
-              if(!kitModal.includes(bt)) kitModal.push(bt);
-            });
-          }
+          matched.forEach(bt => {
+            if(!kitModal.includes(bt)) kitModal.push(bt);
+          });
         }
         renderKit();
       }
