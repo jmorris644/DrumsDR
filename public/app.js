@@ -526,30 +526,8 @@ function kitCard(){
     // Four-limb: show all four colors
     allowedLimbs = ["RH", "LH", "RF", "LF"];
   } else if(sheetKey === "rightleftsnare1.1"){
-    // Right/Left -- Snare: show all four colors with restrictions per shape
-    if(kitModal.length > 0){
-      // Check the selected shapes and determine which colors are allowed
-      const selectedVoices = kitModal.map(bt => VOICE[revoice(bt).slice(2)] || "snare");
-      const hasKick = selectedVoices.some(v => v === "kick");
-      const hasDiamond = selectedVoices.some(v => v === "closedhat" || v === "openhat");
-      const hasOtherShapes = selectedVoices.some(v => !(v === "kick" || v === "closedhat" || v === "openhat"));
-
-      if(hasKick && !hasDiamond && !hasOtherShapes){
-        // Only kick selected: green and orange only (feet)
-        allowedLimbs = ["RF", "LF"];
-      } else if(hasDiamond && !hasKick && !hasOtherShapes){
-        // Only diamond selected: all 4 colors allowed
-        allowedLimbs = ["RH", "LH", "RF", "LF"];
-      } else if(!hasKick && !hasDiamond && hasOtherShapes){
-        // Only snare/other shapes: red and blue only
-        allowedLimbs = ["RH", "LH"];
-      } else {
-        // Mixed selection: show all colors
-        allowedLimbs = ["RH", "LH", "RF", "LF"];
-      }
-    } else {
-      allowedLimbs = ["RH", "LH", "RF", "LF"];
-    }
+    // Right/Left -- Snare: always show all four colors when drums are selected
+    allowedLimbs = ["RH", "LH", "RF", "LF"];
   } else {
     // Other drills: apply instrument rules
     const allKickOrHat = kitModal.every(bt => {
@@ -781,7 +759,7 @@ function renderKit(){
     if(isThreeOrFourLimb){
       descText = "Choose an instrument for the selected drum. Tap drums to add or remove from selection.";
     } else if(sheetKey === "rightleftsnare1.1"){
-      descText = "Choose a color and instrument shape (up to 2 shapes). Green/orange for square (kick) only. Diamond allows all colors. Red/blue for other shapes. Both red and blue on snare splits the circle.";
+      descText = "Pick a color (any color works with any shape). Pick an instrument shape. Select up to 2 drums at once.";
     } else {
       descText = "Choose a color and symbol. Tap drums to add or remove from selection.";
     }
@@ -789,7 +767,7 @@ function renderKit(){
     if(isThreeOrFourLimb){
       descText = "Tap each drum to select it, then pick an instrument. You can select drums one at a time or multiple at once.";
     } else if(sheetKey === "rightleftsnare1.1"){
-      descText = "Tap any instrument shape to select it (up to 2 at a time), then choose colors and instruments.";
+      descText = "Tap any drum to select it (up to 2 at once), then choose a color and instrument shape.";
     } else {
       descText = "Tap drums to select them. You can select multiple drums at once.";
     }
