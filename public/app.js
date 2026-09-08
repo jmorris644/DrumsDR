@@ -566,53 +566,6 @@ function kitCard(){
     }
   }
 
-  // Only show color swatches for non-three/four-limb drills
-  if(!isThreeOrFourLimb && kitModal.length > 0){
-    const colors=document.createElement("div"); colors.className="kitcolors";
-
-    // For Right/Left -- Snare with snare selected, show special "both colors" option
-    if(sheetKey === "rightleftsnare1.1" && allowedLimbs.length === 2 && allowedLimbs.includes("RH") && allowedLimbs.includes("LH")){
-      // Show blue circle
-      const blueBtn=document.createElement("button"); blueBtn.type="button"; blueBtn.className="swatch";
-      blueBtn.style.background=LIMB["RH"].color; blueBtn.title="Blue (Right Hand)";
-      blueBtn.addEventListener("click",()=>setAllKitLimbs("RH"));
-      colors.appendChild(blueBtn);
-
-      // Show red circle
-      const redBtn=document.createElement("button"); redBtn.type="button"; redBtn.className="swatch";
-      redBtn.style.background=LIMB["LH"].color; redBtn.title="Red (Left Hand)";
-      redBtn.addEventListener("click",()=>setAllKitLimbs("LH"));
-      colors.appendChild(redBtn);
-
-      // Show half-red/half-blue circle
-      const bothBtn=document.createElement("button"); bothBtn.type="button"; bothBtn.className="swatch";
-      bothBtn.style.background=`linear-gradient(90deg, ${LIMB["LH"].color} 50%, ${LIMB["RH"].color} 50%)`;
-      bothBtn.title="Both (Red left, Blue right)";
-      bothBtn.addEventListener("click",()=>{
-        // Set first selected drum to LH (red), second to RH (blue)
-        if(kitModal.length === 2){
-          const bt0=kitModal[0], bt1=kitModal[1];
-          const v0=bt0.slice(2), v1=bt1.slice(2);
-          if(!voicing[sheetKey]) voicing[sheetKey]={};
-          voicing[sheetKey][bt0]="LH"+v0;
-          voicing[sheetKey][bt1]="RH"+v1;
-          saveVoicing();
-          renderKit();
-        }
-      });
-      colors.appendChild(bothBtn);
-    } else {
-      // Original behavior for other drills
-      allowedLimbs.forEach(l=>{
-        const b=document.createElement("button"); b.type="button"; b.className="swatch";
-        b.style.background=LIMB[l].color; b.title=LIMB[l].name;
-        b.addEventListener("click",()=>setAllKitLimbs(l));
-        colors.appendChild(b);
-      });
-    }
-    card.appendChild(colors);
-  }
-
   // Add instrument selection
   const symbols=document.createElement("div"); symbols.className="kitvoices";
 
@@ -636,17 +589,136 @@ function kitCard(){
       symbols.appendChild(b);
     });
   } else if(sheetKey === "rightleftsnare1.1" && kitModal.length > 0) {
-    // Right/Left -- Snare: show full instrument list including kick
-    const allVoices = [...HAND_VOICES, ["k","Kick"]];
-    allVoices.forEach(([v,label])=>{
-      const b=document.createElement("button"); b.type="button"; b.className="voicebtn";
+    // Right/Left -- Snare: show combined instrument+color options
+    // Snare options: blue, red, or half-blue/half-red
+    const snareBlueBtn=document.createElement("button"); snareBlueBtn.type="button"; snareBlueBtn.className="voicebtn";
+    snareBlueBtn.innerHTML=`<svg viewBox="0 0 32 32" width="24" height="24">${shapeSVG("snare", LIMB["RH"].color)}</svg><span>Snare (blue)</span>`;
+    snareBlueBtn.addEventListener("click",()=>{
+      kitModal.forEach(bt=>{
+        if(!voicing[sheetKey]) voicing[sheetKey]={};
+        voicing[sheetKey][bt]="RHs";
+      });
+      saveVoicing();
+      kitModal=[];
+      renderKit();
+    });
+    symbols.appendChild(snareBlueBtn);
+
+    const snareRedBtn=document.createElement("button"); snareRedBtn.type="button"; snareRedBtn.className="voicebtn";
+    snareRedBtn.innerHTML=`<svg viewBox="0 0 32 32" width="24" height="24">${shapeSVG("snare", LIMB["LH"].color)}</svg><span>Snare (red)</span>`;
+    snareRedBtn.addEventListener("click",()=>{
+      kitModal.forEach(bt=>{
+        if(!voicing[sheetKey]) voicing[sheetKey]={};
+        voicing[sheetKey][bt]="LHs";
+      });
+      saveVoicing();
+      kitModal=[];
+      renderKit();
+    });
+    symbols.appendChild(snareRedBtn);
+
+    // Half-split snare button with both colors
+    const snareBothBtn=document.createElement("button"); snareBothBtn.type="button"; snareBothBtn.className="voicebtn";
+    const clipid=`snare-both-${Date.now()}`;
+    snareBothBtn.innerHTML=`<svg viewBox="0 0 32 32" width="24" height="24">
+      <defs>
+        <clipPath id="${clipid}-left"><rect x="0" y="0" width="16" height="32"/></clipPath>
+        <clipPath id="${clipid}-right"><rect x="16" y="0" width="16" height="32"/></clipPath>
+      </defs>
+      <g clip-path="url(#${clipid}-left)">${shapeSVG("snare", LIMB["LH"].color)}</g>
+      <g clip-path="url(#${clipid}-right)">${shapeSVG("snare", LIMB["RH"].color)}</g>
+    </svg><span>Snare (half blue / half red)</span>`;
+    snareBothBtn.addEventListener("click",()=>{
+      if(kitModal.length === 2){
+        const bt0=kitModal[0], bt1=kitModal[1];
+        if(!voicing[sheetKey]) voicing[sheetKey]={};
+        voicing[sheetKey][bt0]="LHs";
+        voicing[sheetKey][bt1]="RHs";
+        saveVoicing();
+        kitModal=[];
+        renderKit();
+      }
+    });
+    symbols.appendChild(snareBothBtn);
+
+    // Kick options: green or orange
+    const kickGreenBtn=document.createElement("button"); kickGreenBtn.type="button"; kickGreenBtn.className="voicebtn";
+    kickGreenBtn.innerHTML=`<svg viewBox="0 0 32 32" width="24" height="24">${shapeSVG("kick", LIMB["RF"].color)}</svg><span>Kick (green)</span>`;
+    kickGreenBtn.addEventListener("click",()=>{
+      kitModal.forEach(bt=>{
+        if(!voicing[sheetKey]) voicing[sheetKey]={};
+        voicing[sheetKey][bt]="RFk";
+      });
+      saveVoicing();
+      kitModal=[];
+      renderKit();
+    });
+    symbols.appendChild(kickGreenBtn);
+
+    const kickOrangeBtn=document.createElement("button"); kickOrangeBtn.type="button"; kickOrangeBtn.className="voicebtn";
+    kickOrangeBtn.innerHTML=`<svg viewBox="0 0 32 32" width="24" height="24">${shapeSVG("kick", LIMB["LF"].color)}</svg><span>Kick (orange)</span>`;
+    kickOrangeBtn.addEventListener("click",()=>{
+      kitModal.forEach(bt=>{
+        if(!voicing[sheetKey]) voicing[sheetKey]={};
+        voicing[sheetKey][bt]="LFk";
+      });
+      saveVoicing();
+      kitModal=[];
+      renderKit();
+    });
+    symbols.appendChild(kickOrangeBtn);
+
+    // All other instruments: blue or red
+    const otherVoices = [
+      ["lt","Left tom"],["rt","Right tom"],["ft","Floor tom"],
+      ["rd","Ride"],["lc","Left crash"],["rc","Right crash"],
+      ["ch","Closed hi-hat"],["oh","Open hi-hat"]
+    ];
+    otherVoices.forEach(([v,label])=>{
       const voiceName = VOICE[v] || "snare";
-      b.innerHTML=`<svg viewBox="0 0 32 32" width="24" height="24">${shapeSVG(voiceName, "#9fb0c3")}</svg><span>${label}</span>`;
-      b.addEventListener("click",()=>setAllKitVoices(v));
-      symbols.appendChild(b);
+
+      // Blue version
+      const blueBtn=document.createElement("button"); blueBtn.type="button"; blueBtn.className="voicebtn";
+      blueBtn.innerHTML=`<svg viewBox="0 0 32 32" width="24" height="24">${shapeSVG(voiceName, LIMB["RH"].color)}</svg><span>${label} (blue)</span>`;
+      blueBtn.addEventListener("click",()=>{
+        kitModal.forEach(bt=>{
+          if(!voicing[sheetKey]) voicing[sheetKey]={};
+          voicing[sheetKey][bt]="RH"+v;
+        });
+        saveVoicing();
+        kitModal=[];
+        renderKit();
+      });
+      symbols.appendChild(blueBtn);
+
+      // Red version
+      const redBtn=document.createElement("button"); redBtn.type="button"; redBtn.className="voicebtn";
+      redBtn.innerHTML=`<svg viewBox="0 0 32 32" width="24" height="24">${shapeSVG(voiceName, LIMB["LH"].color)}</svg><span>${label} (red)</span>`;
+      redBtn.addEventListener("click",()=>{
+        kitModal.forEach(bt=>{
+          if(!voicing[sheetKey]) voicing[sheetKey]={};
+          voicing[sheetKey][bt]="LH"+v;
+        });
+        saveVoicing();
+        kitModal=[];
+        renderKit();
+      });
+      symbols.appendChild(redBtn);
     });
   } else if(kitModal.length > 0) {
-    // Other drills: show ghost and rest only
+    // Other drills: show color swatches and basic instruments
+    if(!isThreeOrFourLimb){
+      const colors=document.createElement("div"); colors.className="kitcolors";
+      allowedLimbs.forEach(l=>{
+        const b=document.createElement("button"); b.type="button"; b.className="swatch";
+        b.style.background=LIMB[l].color; b.title=LIMB[l].name;
+        b.addEventListener("click",()=>setAllKitLimbs(l));
+        colors.appendChild(b);
+      });
+      card.appendChild(colors);
+    }
+
+    // Show ghost and rest only
     const specialVoices = [["g","Ghost note"],["x","Rest"]];
     specialVoices.forEach(([v,label])=>{
       const b=document.createElement("button"); b.type="button"; b.className="voicebtn";
