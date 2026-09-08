@@ -526,8 +526,25 @@ function kitCard(){
     // Four-limb: show all four colors
     allowedLimbs = ["RH", "LH", "RF", "LF"];
   } else if(sheetKey === "rightleftsnare1.1"){
-    // Right/Left -- Snare: always show all four colors when drums are selected
-    allowedLimbs = ["RH", "LH", "RF", "LF"];
+    // Right/Left -- Snare: show only RH (blue) and LH (red) for snare shapes
+    // For kick/hat, show RF (green) and LF (orange)
+    const allSnare = kitModal.every(bt => {
+      const originalVoice = VOICE[bt.slice(2)];
+      return originalVoice === "snare" || originalVoice === "ghost" || originalVoice === "rest";
+    });
+    const allKickOrHat = kitModal.every(bt => {
+      const originalVoice = VOICE[bt.slice(2)];
+      return originalVoice === "kick" || originalVoice === "closedhat" || originalVoice === "openhat";
+    });
+
+    if(allSnare){
+      allowedLimbs = ["RH", "LH"];  // blue and red only for snare
+    } else if(allKickOrHat){
+      allowedLimbs = ["RF", "LF"];  // green and orange for kick/hat
+    } else {
+      // Mixed selection
+      allowedLimbs = ["RH", "LH", "RF", "LF"];
+    }
   } else {
     // Other drills: apply instrument rules
     const allKickOrHat = kitModal.every(bt => {
@@ -552,12 +569,47 @@ function kitCard(){
   // Only show color swatches for non-three/four-limb drills
   if(!isThreeOrFourLimb && kitModal.length > 0){
     const colors=document.createElement("div"); colors.className="kitcolors";
-    allowedLimbs.forEach(l=>{
-      const b=document.createElement("button"); b.type="button"; b.className="swatch";
-      b.style.background=LIMB[l].color; b.title=LIMB[l].name;
-      b.addEventListener("click",()=>setAllKitLimbs(l));
-      colors.appendChild(b);
-    });
+
+    // For Right/Left -- Snare with snare selected, show special "both colors" option
+    if(sheetKey === "rightleftsnare1.1" && allowedLimbs.length === 2 && allowedLimbs.includes("RH") && allowedLimbs.includes("LH")){
+      // Show blue circle
+      const blueBtn=document.createElement("button"); blueBtn.type="button"; blueBtn.className="swatch";
+      blueBtn.style.background=LIMB["RH"].color; blueBtn.title="Blue (Right Hand)";
+      blueBtn.addEventListener("click",()=>setAllKitLimbs("RH"));
+      colors.appendChild(blueBtn);
+
+      // Show red circle
+      const redBtn=document.createElement("button"); redBtn.type="button"; redBtn.className="swatch";
+      redBtn.style.background=LIMB["LH"].color; redBtn.title="Red (Left Hand)";
+      redBtn.addEventListener("click",()=>setAllKitLimbs("LH"));
+      colors.appendChild(redBtn);
+
+      // Show half-red/half-blue circle
+      const bothBtn=document.createElement("button"); bothBtn.type="button"; bothBtn.className="swatch";
+      bothBtn.style.background=`linear-gradient(90deg, ${LIMB["LH"].color} 50%, ${LIMB["RH"].color} 50%)`;
+      bothBtn.title="Both (Red left, Blue right)";
+      bothBtn.addEventListener("click",()=>{
+        // Set first selected drum to LH (red), second to RH (blue)
+        if(kitModal.length === 2){
+          const bt0=kitModal[0], bt1=kitModal[1];
+          const v0=bt0.slice(2), v1=bt1.slice(2);
+          if(!voicing[sheetKey]) voicing[sheetKey]={};
+          voicing[sheetKey][bt0]="LH"+v0;
+          voicing[sheetKey][bt1]="RH"+v1;
+          saveVoicing();
+          renderKit();
+        }
+      });
+      colors.appendChild(bothBtn);
+    } else {
+      // Original behavior for other drills
+      allowedLimbs.forEach(l=>{
+        const b=document.createElement("button"); b.type="button"; b.className="swatch";
+        b.style.background=LIMB[l].color; b.title=LIMB[l].name;
+        b.addEventListener("click",()=>setAllKitLimbs(l));
+        colors.appendChild(b);
+      });
+    }
     card.appendChild(colors);
   }
 
@@ -584,8 +636,8 @@ function kitCard(){
       symbols.appendChild(b);
     });
   } else if(sheetKey === "rightleftsnare1.1" && kitModal.length > 0) {
-    // Right/Left -- Snare: show full instrument list for selecting shapes
-    const allVoices = [...HAND_VOICES];
+    // Right/Left -- Snare: show full instrument list including kick
+    const allVoices = [...HAND_VOICES, ["k","Kick"]];
     allVoices.forEach(([v,label])=>{
       const b=document.createElement("button"); b.type="button"; b.className="voicebtn";
       const voiceName = VOICE[v] || "snare";
@@ -731,8 +783,8 @@ function drumCircle(v){
       `<svg x="${x}" y="${y}" width="${w}" height="${h}" viewBox="0 0 32 32">${shapeSVG(v, "#fff")}</svg></g>`;
   }
 
-  // Add selection highlight if this drum is selected
-  if(isSelected){
+  // Add selection highlight if this drum is selected (but not for diamond shape)
+  if(isSelected && v !== "closedhat"){
     // Use the color of the first selected drum that maps to this voice
     const selectedDrum = matched.find(bt => kitModal.includes(bt)) || syntheticInModal[0];
     const highlightColor = selectedDrum ? LIMB[revoice(selectedDrum).slice(0,2)].color : LIMB.RH.color;
