@@ -769,20 +769,34 @@ const DRUM_POSITIONS={
 function limbsForVoice(v){
   const bs=distinctSymbols(sheetKey);
   const limbs=[];
-  bs.forEach(bt=>{
-    const eff=revoice(bt); const effVoice=VOICE[eff.slice(2)]||"snare";
-    if(effVoice===v || (v==="closedhat"&&effVoice==="openhat") || (v==="snare"&&(effVoice==="ghost"||effVoice==="rest"))){
-      const lm=eff.slice(0,2); if(!limbs.includes(lm)) limbs.push(lm);
+
+  // For Right/Left Snare drill, ONLY use voicing assignments, not the base drill symbols
+  if(sheetKey === "rightleftsnare1.1"){
+    if(voicing[sheetKey]){
+      Object.values(voicing[sheetKey]).forEach(tok=>{
+        const effVoice=VOICE[tok.slice(2)]||"snare";
+        if(effVoice===v || (v==="closedhat"&&effVoice==="openhat") || (v==="snare"&&(effVoice==="ghost"||effVoice==="rest"))){
+          const lm=tok.slice(0,2); if(!limbs.includes(lm)) limbs.push(lm);
+        }
+      });
     }
-  });
-  // Also check for synthetic tokens in the voicing map that map to this voice
-  if(voicing[sheetKey]){
-    Object.values(voicing[sheetKey]).forEach(tok=>{
-      const effVoice=VOICE[tok.slice(2)]||"snare";
+  } else {
+    // Other drills: use the original logic
+    bs.forEach(bt=>{
+      const eff=revoice(bt); const effVoice=VOICE[eff.slice(2)]||"snare";
       if(effVoice===v || (v==="closedhat"&&effVoice==="openhat") || (v==="snare"&&(effVoice==="ghost"||effVoice==="rest"))){
-        const lm=tok.slice(0,2); if(!limbs.includes(lm)) limbs.push(lm);
+        const lm=eff.slice(0,2); if(!limbs.includes(lm)) limbs.push(lm);
       }
     });
+    // Also check for synthetic tokens in the voicing map that map to this voice
+    if(voicing[sheetKey]){
+      Object.values(voicing[sheetKey]).forEach(tok=>{
+        const effVoice=VOICE[tok.slice(2)]||"snare";
+        if(effVoice===v || (v==="closedhat"&&effVoice==="openhat") || (v==="snare"&&(effVoice==="ghost"||effVoice==="rest"))){
+          const lm=tok.slice(0,2); if(!limbs.includes(lm)) limbs.push(lm);
+        }
+      });
+    }
   }
   return limbs;
 }
