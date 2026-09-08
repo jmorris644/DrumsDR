@@ -637,25 +637,6 @@ function kitCard(){
       renderSheet();
     });
     symbols.appendChild(kickOrangeBtn);
-
-    const kickBothBtn=document.createElement("button"); kickBothBtn.type="button"; kickBothBtn.className="voicebtn";
-    const clipid=`kick-both-${Date.now()}`;
-    kickBothBtn.innerHTML=`<svg viewBox="0 0 32 32" width="24" height="24">
-      <defs>
-        <clipPath id="${clipid}-left"><rect x="0" y="0" width="16" height="32"/></clipPath>
-        <clipPath id="${clipid}-right"><rect x="16" y="0" width="16" height="32"/></clipPath>
-      </defs>
-      <g clip-path="url(#${clipid}-left)">${shapeSVG("kick", LIMB["LF"].color)}</g>
-      <g clip-path="url(#${clipid}-right)">${shapeSVG("kick", LIMB["RF"].color)}</g>
-    </svg>`;
-    kickBothBtn.addEventListener("click",()=>{
-      delete voicing[sheetKey];
-      saveVoicing();
-      kitModal=[];
-      renderKit();
-      renderSheet();
-    });
-    symbols.appendChild(kickBothBtn);
   } else if(sheetKey === "rightleftsnare1.1" && kitModal.length > 0) {
     // Right/Left -- Snare: simple buttons for all snares to be one color
     const snareBlueBtn=document.createElement("button"); snareBlueBtn.type="button"; snareBlueBtn.className="voicebtn";
