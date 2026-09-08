@@ -492,6 +492,17 @@ function kitCard(){
       // Half and half
       head.innerHTML=`<span class="kitnow">Currently: half blue / half red</span>`;
     }
+  } else if(sheetKey === "RLkick"){
+    // For Right/Left Kick, show current state
+    const lfEff=revoice("LFk"), rfEff=revoice("RFk");
+    const lfColor=LIMB[lfEff.slice(0,2)].color, rfColor=LIMB[rfEff.slice(0,2)].color;
+    if(lfColor === rfColor){
+      // Both same color
+      head.innerHTML=`<span class="kitnow">Currently: all kicks ${lfColor === LIMB.RF.color ? "green" : "orange"}</span>`;
+    } else {
+      // Half and half
+      head.innerHTML=`<span class="kitnow">Currently: half orange / half green</span>`;
+    }
   } else {
     const count = kitModal.length;
     const bs=distinctSymbols(sheetKey);
@@ -599,6 +610,52 @@ function kitCard(){
       b.addEventListener("click",()=>setAllKitVoices(v));
       symbols.appendChild(b);
     });
+  } else if(sheetKey === "RLkick" && kitModal.length > 0) {
+    // Right/Left -- Kick: simple buttons for all kicks to be one color
+    const kickGreenBtn=document.createElement("button"); kickGreenBtn.type="button"; kickGreenBtn.className="voicebtn";
+    kickGreenBtn.innerHTML=`<svg viewBox="0 0 32 32" width="24" height="24">${shapeSVG("kick", LIMB["RF"].color)}</svg>`;
+    kickGreenBtn.addEventListener("click",()=>{
+      if(!voicing[sheetKey]) voicing[sheetKey]={};
+      voicing[sheetKey]["LFk"]="RFk";
+      delete voicing[sheetKey]["RFk"];
+      saveVoicing();
+      kitModal=[];
+      renderKit();
+      renderSheet();
+    });
+    symbols.appendChild(kickGreenBtn);
+
+    const kickOrangeBtn=document.createElement("button"); kickOrangeBtn.type="button"; kickOrangeBtn.className="voicebtn";
+    kickOrangeBtn.innerHTML=`<svg viewBox="0 0 32 32" width="24" height="24">${shapeSVG("kick", LIMB["LF"].color)}</svg>`;
+    kickOrangeBtn.addEventListener("click",()=>{
+      if(!voicing[sheetKey]) voicing[sheetKey]={};
+      voicing[sheetKey]["RFk"]="LFk";
+      delete voicing[sheetKey]["LFk"];
+      saveVoicing();
+      kitModal=[];
+      renderKit();
+      renderSheet();
+    });
+    symbols.appendChild(kickOrangeBtn);
+
+    const kickBothBtn=document.createElement("button"); kickBothBtn.type="button"; kickBothBtn.className="voicebtn";
+    const clipid=`kick-both-${Date.now()}`;
+    kickBothBtn.innerHTML=`<svg viewBox="0 0 32 32" width="24" height="24">
+      <defs>
+        <clipPath id="${clipid}-left"><rect x="0" y="0" width="16" height="32"/></clipPath>
+        <clipPath id="${clipid}-right"><rect x="16" y="0" width="16" height="32"/></clipPath>
+      </defs>
+      <g clip-path="url(#${clipid}-left)">${shapeSVG("kick", LIMB["LF"].color)}</g>
+      <g clip-path="url(#${clipid}-right)">${shapeSVG("kick", LIMB["RF"].color)}</g>
+    </svg>`;
+    kickBothBtn.addEventListener("click",()=>{
+      delete voicing[sheetKey];
+      saveVoicing();
+      kitModal=[];
+      renderKit();
+      renderSheet();
+    });
+    symbols.appendChild(kickBothBtn);
   } else if(sheetKey === "rightleftsnare1.1" && kitModal.length > 0) {
     // Right/Left -- Snare: simple buttons for all snares to be one color
     const snareBlueBtn=document.createElement("button"); snareBlueBtn.type="button"; snareBlueBtn.className="voicebtn";
@@ -722,6 +779,18 @@ function limbsForVoice(v){
     return limbs;
   }
 
+  // For Right/Left Kick drill, only the kick can have colors; all other instruments are empty
+  if(sheetKey === "RLkick"){
+    if(v === "kick"){
+      const lfEff=revoice("LFk"), rfEff=revoice("RFk");
+      const lfLimb=lfEff.slice(0,2), rfLimb=rfEff.slice(0,2);
+      if(!limbs.includes(lfLimb)) limbs.push(lfLimb);
+      if(!limbs.includes(rfLimb)) limbs.push(rfLimb);
+    }
+    // For all other voices, return empty array
+    return limbs;
+  }
+
   // Other drills: use the original logic
   bs.forEach(bt=>{
     const eff=revoice(bt); const effVoice=VOICE[eff.slice(2)]||"snare";
@@ -785,6 +854,16 @@ function drumCircle(v){
         `<g clip-path="url(#${clipid}-left)">${shapeSVG(v, c1)}</g>`+
         `<g clip-path="url(#${clipid}-right)">${shapeSVG(v, c2)}</g>`+
         `</svg></g>`;
+    } else if(v === "kick" && sheetKey === "RLkick" && limbs.includes("RF") && limbs.includes("LF")){
+      // Special case: if kick with both RF and LF in Right/Left -- Kick drill, left side orange, right side green
+      const c1=LIMB["LF"].color; // orange on left
+      const c2=LIMB["RF"].color; // green on right
+      const clipid=`clip-${v}-${Date.now()}`;
+      result = `<g><defs><clipPath id="${clipid}-left"><rect x="0" y="0" width="16" height="32"/></clipPath><clipPath id="${clipid}-right"><rect x="16" y="0" width="16" height="32"/></clipPath></defs>`+
+        `<svg x="${x}" y="${y}" width="${w}" height="${h}" viewBox="0 0 32 32">`+
+        `<g clip-path="url(#${clipid}-left)">${shapeSVG(v, c1)}</g>`+
+        `<g clip-path="url(#${clipid}-right)">${shapeSVG(v, c2)}</g>`+
+        `</svg></g>`;
     } else {
       // Other two-limb cases: split in half vertically for two limbs
       const c1=LIMB[limbs[0]].color, c2=LIMB[limbs[1]].color;
@@ -836,6 +915,12 @@ function renderKit(){
       descText = "Pick one of the three options below to change the snare colors.";
     } else {
       descText = "Tap the snare drum below to select it, then choose your colors.";
+    }
+  } else if(sheetKey === "RLkick"){
+    if(kitModal.length > 0){
+      descText = "Pick one of the three options below to change the kick colors.";
+    } else {
+      descText = "Tap the kick drum below to select it, then choose your colors.";
     }
   } else if(kitModal.length > 0){
     if(isThreeOrFourLimb){
@@ -904,6 +989,16 @@ function renderKit(){
             kitModal=[];
           } else {
             kitModal=["snare"];  // just a marker that snare is selected
+          }
+        }
+        renderKit();
+      } else if(sheetKey === "RLkick"){
+        // For Right/Left -- Kick, only allow clicking the kick, and just toggle selection
+        if(v === "kick"){
+          if(kitModal.length > 0){
+            kitModal=[];
+          } else {
+            kitModal=["kick"];  // just a marker that kick is selected
           }
         }
         renderKit();
