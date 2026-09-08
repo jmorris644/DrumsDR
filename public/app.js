@@ -710,29 +710,33 @@ function limbsForVoice(v){
   const bs=distinctSymbols(sheetKey);
   const limbs=[];
 
-  // For Right/Left Snare drill, show the current snare voicing
-  if(sheetKey === "rightleftsnare1.1" && v === "snare"){
-    const lhEff=revoice("LHs"), rhEff=revoice("RHs");
-    const lhLimb=lhEff.slice(0,2), rhLimb=rhEff.slice(0,2);
-    if(!limbs.includes(lhLimb)) limbs.push(lhLimb);
-    if(!limbs.includes(rhLimb)) limbs.push(rhLimb);
-  } else {
-    // Other drills: use the original logic
-    bs.forEach(bt=>{
-      const eff=revoice(bt); const effVoice=VOICE[eff.slice(2)]||"snare";
+  // For Right/Left Snare drill, only the snare can have colors; all other instruments are empty
+  if(sheetKey === "rightleftsnare1.1"){
+    if(v === "snare"){
+      const lhEff=revoice("LHs"), rhEff=revoice("RHs");
+      const lhLimb=lhEff.slice(0,2), rhLimb=rhEff.slice(0,2);
+      if(!limbs.includes(lhLimb)) limbs.push(lhLimb);
+      if(!limbs.includes(rhLimb)) limbs.push(rhLimb);
+    }
+    // For all other voices (righttom, lefttom, etc.), return empty array
+    return limbs;
+  }
+
+  // Other drills: use the original logic
+  bs.forEach(bt=>{
+    const eff=revoice(bt); const effVoice=VOICE[eff.slice(2)]||"snare";
+    if(effVoice===v || (v==="closedhat"&&effVoice==="openhat") || (v==="snare"&&(effVoice==="ghost"||effVoice==="rest"))){
+      const lm=eff.slice(0,2); if(!limbs.includes(lm)) limbs.push(lm);
+    }
+  });
+  // Also check for synthetic tokens in the voicing map that map to this voice
+  if(voicing[sheetKey]){
+    Object.values(voicing[sheetKey]).forEach(tok=>{
+      const effVoice=VOICE[tok.slice(2)]||"snare";
       if(effVoice===v || (v==="closedhat"&&effVoice==="openhat") || (v==="snare"&&(effVoice==="ghost"||effVoice==="rest"))){
-        const lm=eff.slice(0,2); if(!limbs.includes(lm)) limbs.push(lm);
+        const lm=tok.slice(0,2); if(!limbs.includes(lm)) limbs.push(lm);
       }
     });
-    // Also check for synthetic tokens in the voicing map that map to this voice
-    if(voicing[sheetKey]){
-      Object.values(voicing[sheetKey]).forEach(tok=>{
-        const effVoice=VOICE[tok.slice(2)]||"snare";
-        if(effVoice===v || (v==="closedhat"&&effVoice==="openhat") || (v==="snare"&&(effVoice==="ghost"||effVoice==="rest"))){
-          const lm=tok.slice(0,2); if(!limbs.includes(lm)) limbs.push(lm);
-        }
-      });
-    }
   }
   return limbs;
 }
