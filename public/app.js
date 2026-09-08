@@ -594,9 +594,14 @@ function kitCard(){
     const snareBlueBtn=document.createElement("button"); snareBlueBtn.type="button"; snareBlueBtn.className="voicebtn";
     snareBlueBtn.innerHTML=`<svg viewBox="0 0 32 32" width="24" height="24">${shapeSVG("snare", LIMB["RH"].color)}</svg><span>Snare (blue)</span>`;
     snareBlueBtn.addEventListener("click",()=>{
-      kitModal.forEach(bt=>{
-        if(!voicing[sheetKey]) voicing[sheetKey]={};
-        voicing[sheetKey][bt]="RHs";
+      // For rightleftsnare1.1, update ALL snare tokens (both LHs and RHs) to blue
+      if(!voicing[sheetKey]) voicing[sheetKey]={};
+      const bs=distinctSymbols(sheetKey);
+      bs.forEach(bt=>{
+        const voice=VOICE[bt.slice(2)]||"snare";
+        if(voice==="snare" || voice==="ghost" || voice==="rest"){
+          voicing[sheetKey][bt]="RHs";
+        }
       });
       saveVoicing();
       kitModal=[];
@@ -607,9 +612,14 @@ function kitCard(){
     const snareRedBtn=document.createElement("button"); snareRedBtn.type="button"; snareRedBtn.className="voicebtn";
     snareRedBtn.innerHTML=`<svg viewBox="0 0 32 32" width="24" height="24">${shapeSVG("snare", LIMB["LH"].color)}</svg><span>Snare (red)</span>`;
     snareRedBtn.addEventListener("click",()=>{
-      kitModal.forEach(bt=>{
-        if(!voicing[sheetKey]) voicing[sheetKey]={};
-        voicing[sheetKey][bt]="LHs";
+      // For rightleftsnare1.1, update ALL snare tokens (both LHs and RHs) to red
+      if(!voicing[sheetKey]) voicing[sheetKey]={};
+      const bs=distinctSymbols(sheetKey);
+      bs.forEach(bt=>{
+        const voice=VOICE[bt.slice(2)]||"snare";
+        if(voice==="snare" || voice==="ghost" || voice==="rest"){
+          voicing[sheetKey][bt]="LHs";
+        }
       });
       saveVoicing();
       kitModal=[];
@@ -645,9 +655,21 @@ function kitCard(){
     const kickGreenBtn=document.createElement("button"); kickGreenBtn.type="button"; kickGreenBtn.className="voicebtn";
     kickGreenBtn.innerHTML=`<svg viewBox="0 0 32 32" width="24" height="24">${shapeSVG("kick", LIMB["RF"].color)}</svg><span>Kick (green)</span>`;
     kickGreenBtn.addEventListener("click",()=>{
+      // For rightleftsnare1.1, update ALL kick tokens to green
+      if(!voicing[sheetKey]) voicing[sheetKey]={};
+      const bs=distinctSymbols(sheetKey);
+      bs.forEach(bt=>{
+        const voice=VOICE[bt.slice(2)]||"snare";
+        if(voice==="kick"){
+          voicing[sheetKey][bt]="RFk";
+        }
+      });
+      // Also handle synthetic tokens in kitModal that might not be in base drill
       kitModal.forEach(bt=>{
-        if(!voicing[sheetKey]) voicing[sheetKey]={};
-        voicing[sheetKey][bt]="RFk";
+        const voice=VOICE[bt.slice(2)]||"snare";
+        if(voice==="kick"){
+          voicing[sheetKey][bt]="RFk";
+        }
       });
       saveVoicing();
       kitModal=[];
@@ -658,9 +680,21 @@ function kitCard(){
     const kickOrangeBtn=document.createElement("button"); kickOrangeBtn.type="button"; kickOrangeBtn.className="voicebtn";
     kickOrangeBtn.innerHTML=`<svg viewBox="0 0 32 32" width="24" height="24">${shapeSVG("kick", LIMB["LF"].color)}</svg><span>Kick (orange)</span>`;
     kickOrangeBtn.addEventListener("click",()=>{
+      // For rightleftsnare1.1, update ALL kick tokens to orange
+      if(!voicing[sheetKey]) voicing[sheetKey]={};
+      const bs=distinctSymbols(sheetKey);
+      bs.forEach(bt=>{
+        const voice=VOICE[bt.slice(2)]||"snare";
+        if(voice==="kick"){
+          voicing[sheetKey][bt]="LFk";
+        }
+      });
+      // Also handle synthetic tokens in kitModal that might not be in base drill
       kitModal.forEach(bt=>{
-        if(!voicing[sheetKey]) voicing[sheetKey]={};
-        voicing[sheetKey][bt]="LFk";
+        const voice=VOICE[bt.slice(2)]||"snare";
+        if(voice==="kick"){
+          voicing[sheetKey][bt]="LFk";
+        }
       });
       saveVoicing();
       kitModal=[];
@@ -681,9 +715,21 @@ function kitCard(){
       const blueBtn=document.createElement("button"); blueBtn.type="button"; blueBtn.className="voicebtn";
       blueBtn.innerHTML=`<svg viewBox="0 0 32 32" width="24" height="24">${shapeSVG(voiceName, LIMB["RH"].color)}</svg><span>${label} (blue)</span>`;
       blueBtn.addEventListener("click",()=>{
+        // For rightleftsnare1.1, update ALL tokens of this voice to blue
+        if(!voicing[sheetKey]) voicing[sheetKey]={};
+        const bs=distinctSymbols(sheetKey);
+        bs.forEach(bt=>{
+          const voice=VOICE[bt.slice(2)]||"snare";
+          if(voice===voiceName || (voiceName==="closedhat"&&voice==="openhat")){
+            voicing[sheetKey][bt]="RH"+v;
+          }
+        });
+        // Also handle synthetic tokens in kitModal that might not be in base drill
         kitModal.forEach(bt=>{
-          if(!voicing[sheetKey]) voicing[sheetKey]={};
-          voicing[sheetKey][bt]="RH"+v;
+          const voice=VOICE[bt.slice(2)]||"snare";
+          if(voice===voiceName || (voiceName==="closedhat"&&voice==="openhat")){
+            voicing[sheetKey][bt]="RH"+v;
+          }
         });
         saveVoicing();
         kitModal=[];
@@ -695,9 +741,21 @@ function kitCard(){
       const redBtn=document.createElement("button"); redBtn.type="button"; redBtn.className="voicebtn";
       redBtn.innerHTML=`<svg viewBox="0 0 32 32" width="24" height="24">${shapeSVG(voiceName, LIMB["LH"].color)}</svg><span>${label} (red)</span>`;
       redBtn.addEventListener("click",()=>{
+        // For rightleftsnare1.1, update ALL tokens of this voice to red
+        if(!voicing[sheetKey]) voicing[sheetKey]={};
+        const bs=distinctSymbols(sheetKey);
+        bs.forEach(bt=>{
+          const voice=VOICE[bt.slice(2)]||"snare";
+          if(voice===voiceName || (voiceName==="closedhat"&&voice==="openhat")){
+            voicing[sheetKey][bt]="LH"+v;
+          }
+        });
+        // Also handle synthetic tokens in kitModal that might not be in base drill
         kitModal.forEach(bt=>{
-          if(!voicing[sheetKey]) voicing[sheetKey]={};
-          voicing[sheetKey][bt]="LH"+v;
+          const voice=VOICE[bt.slice(2)]||"snare";
+          if(voice===voiceName || (voiceName==="closedhat"&&voice==="openhat")){
+            voicing[sheetKey][bt]="LH"+v;
+          }
         });
         saveVoicing();
         kitModal=[];
