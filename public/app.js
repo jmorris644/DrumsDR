@@ -606,10 +606,11 @@ function kitCard(){
     snareBlueBtn.addEventListener("click",()=>{
       if(!voicing[sheetKey]) voicing[sheetKey]={};
       voicing[sheetKey]["LHs"]="RHs";
-      voicing[sheetKey]["RHs"]="RHs";
+      delete voicing[sheetKey]["RHs"];
       saveVoicing();
       kitModal=[];
       renderKit();
+      renderSheet();
     });
     symbols.appendChild(snareBlueBtn);
 
@@ -617,11 +618,12 @@ function kitCard(){
     snareRedBtn.innerHTML=`<svg viewBox="0 0 32 32" width="24" height="24">${shapeSVG("snare", LIMB["LH"].color)}</svg><span>All snares red</span>`;
     snareRedBtn.addEventListener("click",()=>{
       if(!voicing[sheetKey]) voicing[sheetKey]={};
-      voicing[sheetKey]["LHs"]="LHs";
       voicing[sheetKey]["RHs"]="LHs";
+      delete voicing[sheetKey]["LHs"];
       saveVoicing();
       kitModal=[];
       renderKit();
+      renderSheet();
     });
     symbols.appendChild(snareRedBtn);
 
@@ -636,12 +638,11 @@ function kitCard(){
       <g clip-path="url(#${clipid}-right)">${shapeSVG("snare", LIMB["RH"].color)}</g>
     </svg><span>Half blue / half red</span>`;
     snareBothBtn.addEventListener("click",()=>{
-      if(!voicing[sheetKey]) voicing[sheetKey]={};
-      voicing[sheetKey]["LHs"]="LHs";
-      voicing[sheetKey]["RHs"]="RHs";
+      delete voicing[sheetKey];
       saveVoicing();
       kitModal=[];
       renderKit();
+      renderSheet();
     });
     symbols.appendChild(snareBothBtn);
   } else if(kitModal.length > 0) {
