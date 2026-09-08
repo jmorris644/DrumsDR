@@ -611,32 +611,54 @@ function kitCard(){
       symbols.appendChild(b);
     });
   } else if(sheetKey === "RLkick" && kitModal.length > 0) {
-    // Right/Left -- Kick: simple buttons for all kicks to be one color
-    const kickGreenBtn=document.createElement("button"); kickGreenBtn.type="button"; kickGreenBtn.className="voicebtn";
-    kickGreenBtn.innerHTML=`<svg viewBox="0 0 32 32" width="24" height="24">${shapeSVG("kick", LIMB["RF"].color)}</svg>`;
+    // Right/Left -- Kick: three buttons for all green, half/half, all orange
+    const colors=document.createElement("div"); colors.className="kitcolors";
+
+    // All green button
+    const kickGreenBtn=document.createElement("button"); kickGreenBtn.type="button"; kickGreenBtn.className="swatch";
+    kickGreenBtn.style.background=LIMB["RF"].color; kickGreenBtn.title="All kicks green (right foot)";
     kickGreenBtn.addEventListener("click",()=>{
       if(!voicing[sheetKey]) voicing[sheetKey]={};
       voicing[sheetKey]["LFk"]="RFk";
       delete voicing[sheetKey]["RFk"];
+      if(Object.keys(voicing[sheetKey]).length === 0) delete voicing[sheetKey];
       saveVoicing();
       kitModal=[];
       renderKit();
-      renderSheet();
     });
-    symbols.appendChild(kickGreenBtn);
+    colors.appendChild(kickGreenBtn);
 
-    const kickOrangeBtn=document.createElement("button"); kickOrangeBtn.type="button"; kickOrangeBtn.className="voicebtn";
-    kickOrangeBtn.innerHTML=`<svg viewBox="0 0 32 32" width="24" height="24">${shapeSVG("kick", LIMB["LF"].color)}</svg>`;
+    // Half/half button (split)
+    const kickSplitBtn=document.createElement("button"); kickSplitBtn.type="button"; kickSplitBtn.className="swatch split";
+    kickSplitBtn.style.background=`linear-gradient(90deg, ${LIMB["LF"].color} 50%, ${LIMB["RF"].color} 50%)`;
+    kickSplitBtn.title="Half orange / half green (default)";
+    kickSplitBtn.addEventListener("click",()=>{
+      if(voicing[sheetKey]){
+        delete voicing[sheetKey]["LFk"];
+        delete voicing[sheetKey]["RFk"];
+        if(Object.keys(voicing[sheetKey]).length === 0) delete voicing[sheetKey];
+      }
+      saveVoicing();
+      kitModal=[];
+      renderKit();
+    });
+    colors.appendChild(kickSplitBtn);
+
+    // All orange button
+    const kickOrangeBtn=document.createElement("button"); kickOrangeBtn.type="button"; kickOrangeBtn.className="swatch";
+    kickOrangeBtn.style.background=LIMB["LF"].color; kickOrangeBtn.title="All kicks orange (left foot)";
     kickOrangeBtn.addEventListener("click",()=>{
       if(!voicing[sheetKey]) voicing[sheetKey]={};
       voicing[sheetKey]["RFk"]="LFk";
       delete voicing[sheetKey]["LFk"];
+      if(Object.keys(voicing[sheetKey]).length === 0) delete voicing[sheetKey];
       saveVoicing();
       kitModal=[];
       renderKit();
-      renderSheet();
     });
-    symbols.appendChild(kickOrangeBtn);
+    colors.appendChild(kickOrangeBtn);
+
+    card.appendChild(colors);
   } else if(sheetKey === "rightleftsnare1.1" && kitModal.length > 0) {
     // Right/Left -- Snare: show color swatches based on selection
     const allSnare = kitModal.every(bt => {
